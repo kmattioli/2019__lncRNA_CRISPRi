@@ -1,0 +1,9 @@
+Bladder
+Colorectal
+Thyroid
+Lung
+Liver
+Pancreas
+Esophageal
+Gastric
+Prostate
