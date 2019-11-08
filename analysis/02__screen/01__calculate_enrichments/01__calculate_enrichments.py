@@ -602,11 +602,56 @@ plt.close()
 # In[41]:
 
 
+fig, ax = plt.subplots(figsize=(2, 2), nrows=1, ncols=1)
+
+exp = for_plot[for_plot["ctrl_status_fixed"] == "experimental"]
+scr = for_plot[for_plot["ctrl_status_fixed"] == "scramble"]
+ctrl = for_plot[for_plot["ctrl_status_fixed"] == "control"]
+
+ax.scatter(exp["BFP+_enrichment__rep1"], exp["BFP+_enrichment__rep2"], color=pal["experimental"], s=5, alpha=0.7)
+ax.scatter(scr["BFP+_enrichment__rep1"], scr["BFP+_enrichment__rep2"], color=pal["scramble"], s=5, alpha=0.7)
+ax.scatter(ctrl["BFP+_enrichment__rep1"], ctrl["BFP+_enrichment__rep2"], color=pal["control"], alpha=1, s=5)
+
+ax.set_xscale('symlog', linscale=20)
+ax.set_yscale('symlog', linscale=20)
+
+ax.plot([-0.18, 10000], [-0.18, 10000], "--", color="gray", linewidth=1)
+
+ax.set_xlim((-0.18, 10000))
+ax.set_ylim((-0.18, 10000))
+
+# annotate corr
+no_nan = data_stringent_filt[(~pd.isnull(data_stringent_filt["BFP+_enrichment__rep1"])) & 
+                             (~pd.isnull(data_stringent_filt["BFP+_enrichment__rep2"]))]
+r, p = pearsonr(no_nan["BFP+_enrichment__rep1"], no_nan["BFP+_enrichment__rep2"])
+print(r)
+# ax.text(0.95, 0.2, "r = {:.2f}".format(r), ha="right", va="top", fontsize=fontsize, fontweight="bold",
+#         transform=ax.transAxes)
+
+# filter data to those that are reproducibly enriched in both reps
+filt = data_stringent_filt[(data_stringent_filt["BFP+_enrichment__rep1"] >= 2) & 
+                           (data_stringent_filt["BFP+_enrichment__rep2"] >= 2)]
+
+ax.text(0.97, 0.17, "filtered sgRNAs\n(n = %s)" % (len(no_nan)), ha="right", va="top", fontsize=fontsize,
+        transform=ax.transAxes)
+ax.text(0.3, 0.97, "reproducibly enriched\nsgRNAs\n(n = %s)" % (len(filt)), ha="left", va="top", fontsize=fontsize,
+        transform=ax.transAxes)
+
+plt.xlabel("sgRNA score rep 1")
+plt.ylabel("sgRNA score rep 2")
+plt.show()
+fig.savefig("Fig3E_JeffTalk.pdf", dpi="figure", bbox_inches="tight")
+plt.close()
+
+
+# In[42]:
+
+
 tmp = filt[["BFP+_enrichment__rep1", "BFP+_enrichment__rep2"]]
 len(tmp)
 
 
-# In[42]:
+# In[43]:
 
 
 tmp["log1"] = np.log2(tmp["BFP+_enrichment__rep1"])
@@ -614,14 +659,14 @@ tmp["log2"] = np.log2(tmp["BFP+_enrichment__rep2"])
 tmp[["log1", "log2"]].corr(method="pearson")
 
 
-# In[43]:
+# In[44]:
 
 
 rep_scr = filt[filt["ctrl_status_fixed"] == "scramble"]
 len(rep_scr["group_id"].unique())
 
 
-# In[44]:
+# In[45]:
 
 
 len(rep_scr)/len(filt)
@@ -629,13 +674,13 @@ len(rep_scr)/len(filt)
 
 # ## 9. annotate stringently-filtered sgRNAs
 
-# In[45]:
+# In[46]:
 
 
 filt.head()
 
 
-# In[46]:
+# In[47]:
 
 
 all_enrich_grp["stringent_filt"] = all_enrich_grp["group_id"].isin(filt["group_id"])
@@ -644,7 +689,7 @@ len(all_enrich_grp[all_enrich_grp["stringent_filt"]])
 
 # ## 10. write file
 
-# In[47]:
+# In[48]:
 
 
 f = "../../../data/02__screen/02__enrichment_data/enrichment_values.tmp"
@@ -652,7 +697,7 @@ print(len(all_enrich_grp))
 all_enrich_grp.to_csv(f, sep="\t", index=False)
 
 
-# In[48]:
+# In[49]:
 
 
 f = "../../../data/02__screen/02__enrichment_data/filtered_sgRNAs.tmp"
@@ -660,7 +705,7 @@ print(len(filt))
 filt.to_csv(f, sep="\t", index=False)
 
 
-# In[49]:
+# In[50]:
 
 
 f = "../../../data/02__screen/02__enrichment_data/data_stringent_filt.tmp"
