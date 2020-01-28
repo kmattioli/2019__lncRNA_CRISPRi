@@ -159,6 +159,7 @@ index.head()
 
 endo_ctrls_validated = pd.read_table(endo_ctrls_validated_f, sep="\t", header=None)
 endo_ctrls_validated.columns = ["gene_name"]
+print(len(endo_ctrls_validated))
 endo_ctrls_validated.head()
 
 
@@ -224,6 +225,20 @@ index.groupby("ctrl_status_fixed")["sgRNA"].agg("count")
 
 
 index[["tss_id_hg38", "ctrl_status_fixed"]].drop_duplicates().groupby("ctrl_status_fixed")["tss_id_hg38"].agg("count")
+
+
+# In[25]:
+
+
+tmp = index[["tss_id_hg38", "gene_name", "transcript_name", "ctrl_status_fixed"]].drop_duplicates()
+ctrls_in_idx = tmp[tmp["ctrl_status_fixed"] == "control"]
+ctrls_in_idx
+
+
+# In[27]:
+
+
+endo_ctrls_validated[~endo_ctrls_validated["gene_name"].isin(ctrls_in_idx["gene_name"])]
 
 
 # ## 3. merge sgRNA counts w/ index

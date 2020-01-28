@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # 01__expression
@@ -6,11 +6,7 @@
 # in this notebook, i join enrichment data with expression data and look into how the two are related.
 # 
 # figures in this notebook:
-# - Fig 5G: boxplot showing log2 foldchange in expression from our RNA-seq data for hits vs. non-hits from our screen
-# - Fig 5H: boxplot showing mean endo expression from our RNA-seq data for hits vs. non-hits from our screen
-# - Fig 5I: plot comparing log2 foldchange in expression from RNA-seq to transcript enrichment score for hits from our screen
-# - Fig 5J: volcano plot showing log2 foldchange in expression from RNA-seq with hits from our screen highlighted
-# - Fig S5D: plot comparing log2 foldchange in expression from RNA-seq to transcript enrichment score for all lncRNAs in our screen + positive controls
+# - Fig 5H: volcano plot showing log2 foldchange in expression from RNA-seq with hits from our screen highlighted
 
 # In[1]:
 
@@ -249,7 +245,7 @@ plt.ylabel("log2(endo tpm/hESC tpm)")
 plt.xscale('symlog')
  
 # #plt.xlim((-0.05, 1.7))
-fig.savefig("FigS5D.pdf", dpi="figure", bbox_inches="tight")
+#fig.savefig("FigS5D.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 5. plot expression, tissue-specificity & expression change for hits vs. non hits
@@ -269,58 +265,50 @@ print(len(hits.group_id.unique()))
 hits.head()
 
 
-# In[25]:
+# In[45]:
+
+
+hits[["gene_name", "ctrl_status_fixed", "cleaner_gene_biotype", "BFP+_score__mean"]].drop_duplicates().sort_values(by="BFP+_score__mean", ascending=False)
+
+
+# In[26]:
 
 
 hits[hits["ctrl_status_fixed"] == "control"]
 
 
-# In[26]:
+# In[27]:
 
 
 print(len(hits[hits["ctrl_status_fixed"] == "control"]))
 hits[hits["ctrl_status_fixed"] == "control"].sort_values(by="group_id")
 
 
-# In[27]:
+# In[28]:
 
 
 print(len(hits[~hits["endo_ctrl_val"]]))
 
 
-# In[28]:
+# In[29]:
+
+
+len(hits[hits["ctrl_status_fixed"] == "control"]["gene_id"].unique())
+
+
+# In[30]:
+
+
+len(hits[~hits["endo_ctrl_val"]]["gene_id"].unique())
+
+
+# In[31]:
 
 
 data_w_seq["endo_hESC_abslog2fc"] = np.abs(data_w_seq["endo_hESC_log2fc"])
 
 
-# In[29]:
-
-
-order = ["lncRNA_good_csf", "protein_coding"]
-hue_order = ["no hit", "lenient hit", "stringent hit"]
-pal = {"no hit": "gray", "lenient hit": sns.color_palette("Set2")[2], "stringent hit": "black"}
-
-fig, axarr = plt.subplots(figsize=(2.5, 1.25), nrows=1, ncols=2)
-
-for i, csf in enumerate(order):
-    ax = axarr[i]
-    sub = data_w_seq[data_w_seq["csf"] == csf]
-    sns.boxplot(data=sub, x="is_hit", y="endo_hESC_abslog2fc",
-                flierprops = dict(marker='o', markersize=3), order=hue_order, palette=pal, ax=ax)
-    mimic_r_boxplot(ax)
-    ax.set_xticklabels(hue_order, rotation=45, ha="right", va="top")
-    ax.set_xlabel("")
-    ax.set_ylabel("| log2 (endo/hESC) |")
-    ax.set_title(csf)
-    if i != 0:
-        ax.set_ylabel("")
-    ax.set_yscale("log")
-
-plt.subplots_adjust(wspace=0.3)
-
-
-# In[30]:
+# In[32]:
 
 
 order = ["lncRNA_good_csf", "protein_coding"]
@@ -359,11 +347,11 @@ for i, csf in enumerate(order):
     else:
         annotate_pval(ax, 0.2, 0.8, 8, 0, 7.8, pval, fontsize)
 
-plt.subplots_adjust(wspace=0.1)
-fig.savefig("Fig5G.pdf", dpi="figure", bbox_inches="tight")
+plt.subplots_adjust(wspace=0.2)
+#fig.savefig("Fig5G.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[31]:
+# In[33]:
 
 
 fig, axarr = plt.subplots(figsize=(1.75, 1.85), nrows=1, ncols=2, sharey=True)
@@ -398,13 +386,13 @@ for i, csf in enumerate(order):
     else:
         annotate_pval(ax, 0.2, 0.8, 170, 0, 170, pval, fontsize)
 
-plt.subplots_adjust(wspace=0.1)
-fig.savefig("Fig5H.pdf", dpi="figure", bbox_inches="tight")
+plt.subplots_adjust(wspace=0.2)
+#fig.savefig("Fig5H.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 6. plot expression change v. enrichment score for stringent hits only
 
-# In[32]:
+# In[34]:
 
 
 hits = data_w_seq[data_w_seq["is_hit"] == "stringent hit"]
@@ -413,7 +401,7 @@ control = hits[hits["ctrl_status_fixed"] == "control"]
 control["gene_name"]
 
 
-# In[33]:
+# In[35]:
 
 
 fig, ax = plt.subplots(figsize=(1.5,1.85), nrows=1, ncols=1)
@@ -426,12 +414,12 @@ ax.scatter(control["BFP+_score__mean"], control["endo_hESC_log2fc"], s=20,
 ax.set_xlabel("transcript enrichment score")
 ax.set_ylabel("log2 (endo/hESC)")
 ax.set_xscale('symlog')
-fig.savefig("Fig5I.pdf", dpi="figure", bbox_inches="tight")
+#fig.savefig("Fig5I.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 7. mark hits in all RNA-seq data
 
-# In[34]:
+# In[36]:
 
 
 no_na = data_w_seq[~pd.isnull(data_w_seq["qval_hESC_endo"])]
@@ -440,10 +428,10 @@ no_na["qval_log10_hESC_endo"] = -np.log10(no_na["qval_hESC_endo"].astype(float))
 len(no_na)
 
 
-# In[35]:
+# In[37]:
 
 
-fig = plt.figure(figsize=(1.75, 1.85))
+fig = plt.figure(figsize=(1.75, 1.5))
 
 ncRNA = no_na[no_na["ctrl_status_fixed"] == "experimental"]
 mRNA = no_na[no_na["ctrl_status_fixed"] == "control"]
@@ -470,19 +458,19 @@ plt.savefig("Fig5J.pdf", bbox_inches="tight", dpi="figure")
 
 # ## 6. write file
 
-# In[36]:
+# In[38]:
 
 
 f = "../../../data/02__screen/02__enrichment_data/enrichment_values.with_rna_seq.txt"
 
 
-# In[37]:
+# In[39]:
 
 
 data_w_seq.columns
 
 
-# In[38]:
+# In[40]:
 
 
 data_w_seq = data_w_seq[["group_id", "ctrl_status", "endo_ctrl_val", "gene_name", "gene_id", "transcript_name",
@@ -495,17 +483,15 @@ data_w_seq = data_w_seq[["group_id", "ctrl_status", "endo_ctrl_val", "gene_name"
 data_w_seq.head()
 
 
-# In[39]:
+# In[41]:
 
 
 data_w_seq = data_w_seq.sort_values(by="BFP+_score__mean", ascending=False)
 data_w_seq.to_csv(f, sep="\t", index=False)
 
 
-# In[40]:
+# In[ ]:
 
 
-from platform import python_version
 
-print(python_version())
 
