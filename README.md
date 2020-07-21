@@ -5,3 +5,7 @@ This repository contains all of the RNA-seq and CRISPRi screen analysis containe
 - pandas
 - seaborn
 - statsmodels
+
+The CRISPR screen analysis itself is run in R 3.6 and requires the following packages:
+- DESeq2
+- CRISPhieRmix
