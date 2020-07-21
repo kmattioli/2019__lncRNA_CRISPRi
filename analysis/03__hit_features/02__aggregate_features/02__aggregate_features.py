@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # 02__aggregate_features
+# 
+# in this notebook, i aggregate all features examined (in order to make plots for Fig 5 and for the cluster analysis in Fig 6)
+# 
+# tables in this notebook:
+# - Table S5: features for all lncRNAs in the screen
+
 # In[1]:
 
 
@@ -55,38 +62,29 @@ def min_biotype(row):
         return "lncRNA"
 
 
+# ## variables
+
 # In[5]:
 
 
-def min_hit(row):
-    if row.is_hit == "stringent hit":
-        return "hit"
-    elif row.is_hit == "lenient hit":
-        return "lenient"
-    else:
-        return "no hit"
-
-
-# ## variables
-
-# In[6]:
-
-
 # features
-feature_dir = "../../../misc/08__model_features"
+feature_dir = "../../../misc/09__model_features"
 splicing_f = "%s/gene_splicing_efficiency.with_DIGIT.txt" % feature_dir
 gc_f = "%s/gc_content.with_DIGIT.txt" % feature_dir
 n_tss_f = "%s/n_tss_within_100bp.with_DIGIT.txt" % feature_dir
 n_enh_f = "%s/n_enhancers_within_1mb.with_DIGIT.txt" % feature_dir
-closest_enh_f = "%s/closest_enh_to_TSS.with_DIGIT.txt" % feature_dir
+closest_enh_tss_f = "%s/closest_enh_to_TSS.with_DIGIT.fixed.txt" % feature_dir
+closest_enh_tran_f = "%s/closest_enh_to_transcript.with_DIGIT.txt" % feature_dir
 prom_cons_f = "%s/promoter_conservation.500buff.with_DIGIT.txt" % feature_dir
 exon_cons_f = "%s/exon_conservation.with_DIGIT.txt" % feature_dir
 dna_len_f = "%s/transcript_length.with_DIGIT.txt" % feature_dir
 rna_len_f = "%s/transcript_length_RNA.with_DIGIT.txt" % feature_dir
 n_exons_f = "%s/n_exons_per_transcript.with_DIGIT.txt" % feature_dir
+closest_DE_enh_tss_f = "%s/closest_DE_enh_to_TSS.with_DIGIT.fixed.txt" % feature_dir
+closest_DE_enh_tran_f = "%s/closest_DE_enh_to_transcript.with_DIGIT.txt" % feature_dir
 
 
-# In[7]:
+# In[6]:
 
 
 # gwas file
@@ -94,52 +92,65 @@ gwas_dir = "../../../misc/06__gwas"
 closest_endo_f = "%s/transcript_coords.closest_endo_cancer_snp.with_DIGIT.bed" % gwas_dir
 
 
-# In[8]:
+# In[7]:
 
 
 gene_map_f = "../../../misc/00__gene_metadata/gencode.v25lift37.GENE_ID_TRANSCRIPT_ID_MAP.with_DIGIT.fixed.txt"
 
 
-# In[9]:
+# In[8]:
 
 
-hits_f = "../../../data/02__screen/02__enrichment_data/enrichment_values.with_rna_seq.txt"
+hits_f = "../../../data/02__screen/02__enrichment_data/enrichment_values.with_rna_seq.UPDATED.txt"
 
 
 # ## 1. import data
 
-# In[10]:
+# In[9]:
 
 
 splicing = pd.read_table(splicing_f)
 
 
-# In[11]:
+# In[10]:
 
 
 gc = pd.read_table(gc_f, header=None)
 gc.columns = ["transcript_id", "gc"]
 
 
-# In[12]:
+# In[11]:
 
 
 n_tss = pd.read_table(n_tss_f, delim_whitespace=True, header=None)
 n_tss.columns = ["n_tss", "transcript_id"]
 
 
-# In[13]:
+# In[12]:
 
 
 n_enh = pd.read_table(n_enh_f, delim_whitespace=True, header=None)
 n_enh.columns = ["n_enh", "transcript_id"]
 
 
+# In[13]:
+
+
+closest_enh_tss = pd.read_table(closest_enh_tss_f, header=None)
+closest_enh_tss.columns = ["chr", "start", "end", "transcript_id", "score", "strand", "enh_chr", "enh_start", 
+                           "enh_end", "closest_enh_id", "enh_len", "enh_strand", "enh_tss1", "enh_tss2",
+                           "enh_blocks", "enh_nblocks", "enh_distblocks", "enh_endblocks", "enh_tss_dist"]
+closest_enh_tss = closest_enh_tss[["transcript_id", "enh_tss_dist"]]
+
+
 # In[14]:
 
 
-closest_enh = pd.read_table(closest_enh_f, header=None)
-closest_enh.columns = ["transcript_id", "enh_id", "enh_dist"]
+closest_enh_tran = pd.read_table(closest_enh_tran_f, header=None)
+closest_enh_tran.columns = ["chr", "start", "end", "transcript_id", "enh_chr", "enh_start", 
+                           "enh_end", "closest_enh_id", "enh_len", "enh_strand", "enh_tss1", "enh_tss2",
+                           "enh_blocks", "enh_nblocks", "enh_distblocks", "enh_endblocks", "enh_tran_dist"]
+closest_enh_tran = closest_enh_tran[["transcript_id", "enh_tran_dist"]]
 
 
 # In[15]:
@@ -186,11 +197,29 @@ closest_endo.columns = ["chr", "start", "end", "transcript_id", "snp_chr", "snp_
 # In[21]:
 
 
+closest_DE_enh_tss = pd.read_table(closest_DE_enh_tss_f, header=None)
+closest_DE_enh_tss.columns = ["chr", "start", "end", "transcript_id", "score", "strand", "enh_chr", "enh_start", 
+                           "enh_end", "DE_enh_tss_dist"]
+closest_DE_enh_tss = closest_DE_enh_tss[["transcript_id", "DE_enh_tss_dist"]]
+
+
+# In[22]:
+
+
+closest_DE_enh_tran = pd.read_table(closest_DE_enh_tran_f, header=None)
+closest_DE_enh_tran.columns = ["chr", "start", "end", "transcript_id", "enh_chr", "enh_start", 
+                           "enh_end", "DE_enh_tran_dist"]
+closest_DE_enh_tran = closest_DE_enh_tran[["transcript_id", "DE_enh_tran_dist"]]
+
+
+# In[23]:
+
+
 gene_map = pd.read_table(gene_map_f, header=None)
 gene_map.columns = ["gene_id", "transcript_id"]
 
 
-# In[22]:
+# In[24]:
 
 
 hits = pd.read_table(hits_f)
@@ -198,7 +227,7 @@ hits = pd.read_table(hits_f)
 
 # ## 2. join transcript-level data w/ gene id
 
-# In[23]:
+# In[25]:
 
 
 print(len(gc))
@@ -206,7 +235,7 @@ gc = gc.merge(gene_map, on="transcript_id")
 print(len(gc))
 
 
-# In[24]:
+# In[26]:
 
 
 print(len(n_tss))
@@ -214,7 +243,7 @@ n_tss = n_tss.merge(gene_map, on="transcript_id")
 print(len(n_tss))
 
 
-# In[25]:
+# In[27]:
 
 
 print(len(n_enh))
@@ -222,15 +251,23 @@ n_enh = n_enh.merge(gene_map, on="transcript_id")
 print(len(n_enh))
 
 
-# In[26]:
+# In[28]:
 
 
-print(len(closest_enh))
-closest_enh = closest_enh.merge(gene_map, on="transcript_id")
-print(len(closest_enh))
+print(len(closest_enh_tss))
+closest_enh_tss = closest_enh_tss.merge(gene_map, on="transcript_id")
+print(len(closest_enh_tss))
 
 
-# In[27]:
+# In[29]:
+
+
+print(len(closest_enh_tran))
+closest_enh_tran = closest_enh_tran.merge(gene_map, on="transcript_id")
+print(len(closest_enh_tran))
+
+
+# In[30]:
 
 
 print(len(prom_cons))
@@ -238,7 +275,7 @@ prom_cons = prom_cons.merge(gene_map, left_on="name", right_on="transcript_id")
 print(len(prom_cons))
 
 
-# In[28]:
+# In[31]:
 
 
 print(len(exon_cons))
@@ -246,7 +283,7 @@ exon_cons = exon_cons.merge(gene_map, left_on="name", right_on="transcript_id")
 print(len(exon_cons))
 
 
-# In[29]:
+# In[32]:
 
 
 print(len(dna_len))
@@ -254,7 +291,7 @@ dna_len = dna_len.merge(gene_map, on="transcript_id")
 print(len(dna_len))
 
 
-# In[30]:
+# In[33]:
 
 
 print(len(rna_len))
@@ -262,7 +299,7 @@ rna_len = rna_len.merge(gene_map, on="transcript_id")
 print(len(rna_len))
 
 
-# In[31]:
+# In[34]:
 
 
 print(len(closest_endo))
@@ -270,37 +307,74 @@ closest_endo = closest_endo.merge(gene_map, on="transcript_id")
 print(len(closest_endo))
 
 
+# In[35]:
+
+
+print(len(closest_DE_enh_tss))
+closest_DE_enh_tss = closest_DE_enh_tss.merge(gene_map, on="transcript_id")
+print(len(closest_DE_enh_tss))
+
+
+# In[36]:
+
+
+print(len(closest_DE_enh_tran))
+closest_DE_enh_tran = closest_DE_enh_tran.merge(gene_map, on="transcript_id")
+print(len(closest_DE_enh_tran))
+
+
 # ## 3. aggregate features to gene level
 
-# In[32]:
+# In[37]:
 
 
 gc_gene = gc.groupby("gene_id")["gc"].agg("mean").reset_index()
 print(len(gc_gene))
 
 
-# In[33]:
+# In[38]:
 
 
 n_tss_gene = n_tss.groupby("gene_id")["n_tss"].agg("max").reset_index()
 print(len(n_tss_gene))
 
 
-# In[34]:
+# In[39]:
 
 
 n_enh_gene = n_enh.groupby("gene_id")["n_enh"].agg("max").reset_index()
 print(len(n_enh_gene))
 
 
-# In[35]:
+# In[40]:
 
 
-closest_enh_gene = closest_enh.groupby("gene_id")["enh_dist"].agg("min").reset_index()
-print(len(closest_enh_gene))
+closest_enh_tss_gene = closest_enh_tss.groupby("gene_id")["enh_tss_dist"].agg("min").reset_index()
+print(len(closest_enh_tss_gene))
 
 
-# In[36]:
+# In[41]:
+
+
+closest_enh_tran_gene = closest_enh_tran.groupby("gene_id")["enh_tran_dist"].agg("min").reset_index()
+print(len(closest_enh_tran_gene))
+
+
+# In[42]:
+
+
+closest_DE_enh_tss_gene = closest_DE_enh_tss.groupby("gene_id")["DE_enh_tss_dist"].agg("min").reset_index()
+print(len(closest_DE_enh_tss_gene))
+
+
+# In[43]:
+
+
+closest_DE_enh_tran_gene = closest_DE_enh_tran.groupby("gene_id")["DE_enh_tran_dist"].agg("min").reset_index()
+print(len(closest_DE_enh_tran_gene))
+
+
+# In[44]:
 
 
 prom_cons_gene = prom_cons.groupby("gene_id")["median"].agg("max").reset_index()
@@ -308,7 +382,7 @@ prom_cons_gene.columns = ["gene_id", "prom_cons"]
 print(len(prom_cons_gene))
 
 
-# In[37]:
+# In[45]:
 
 
 exon_cons_tx = exon_cons.groupby(["name", "gene_id"])["median"].agg("mean").reset_index()
@@ -317,28 +391,28 @@ exon_cons_gene.columns = ["gene_id", "exon_cons"]
 print(len(exon_cons_gene))
 
 
-# In[38]:
+# In[46]:
 
 
 dna_len_gene = dna_len.groupby("gene_id")["dna_len"].agg("max").reset_index()
 print(len(dna_len_gene))
 
 
-# In[39]:
+# In[47]:
 
 
 rna_len_gene = rna_len.groupby("gene_id")["rna_len"].agg("max").reset_index()
 print(len(rna_len_gene))
 
 
-# In[40]:
+# In[48]:
 
 
 n_exons_gene = n_exons.groupby("gene_id")["n_exons"].agg("max").reset_index()
 print(len(n_exons_gene))
 
 
-# In[41]:
+# In[49]:
 
 
 # same thing for RNA-seq data: sum up transcript expression levels
@@ -346,7 +420,7 @@ endo_exp = hits[["gene_id", "hESC_mean", "endo_mean"]].groupby("gene_id")[["hESC
 print(len(endo_exp))
 
 
-# In[42]:
+# In[50]:
 
 
 # take transcript w/ maximum logfc expression
@@ -354,7 +428,7 @@ endo_fc = hits[["gene_id", "endo_hESC_abslog2fc"]].groupby("gene_id")["endo_hESC
 print(len(endo_fc))
 
 
-# In[43]:
+# In[51]:
 
 
 # need to also do this for gwas
@@ -370,42 +444,58 @@ print(len(closest_endo_gene))
 
 # ## 4. merge all genomic features into 1 dataframe
 
-# In[44]:
+# In[52]:
 
 
 data = splicing.merge(gc_gene, on="gene_id", how="outer")
 print(len(data))
 
 
-# In[45]:
+# In[53]:
 
 
 data = data.merge(n_tss_gene, on="gene_id", how="left").merge(n_enh_gene, on="gene_id", how="left")
 print(len(data))
 
 
-# In[46]:
+# In[54]:
 
 
-data = data.merge(closest_enh_gene, on="gene_id", how="left").merge(prom_cons_gene, on="gene_id", how="left")
+data = data.merge(closest_enh_tss_gene, on="gene_id", how="left").merge(closest_enh_tran_gene, 
+                                                                        on="gene_id", how="left")
 print(len(data))
 
 
-# In[47]:
+# In[55]:
+
+
+data = data.merge(closest_DE_enh_tss_gene, on="gene_id", how="left").merge(closest_DE_enh_tran_gene, 
+                                                                           on="gene_id", how="left")
+print(len(data))
+
+
+# In[56]:
+
+
+data = data.merge(prom_cons_gene, on="gene_id", how="left")
+print(len(data))
+
+
+# In[57]:
 
 
 data = data.merge(exon_cons_gene, on="gene_id", how="left").merge(dna_len_gene, on="gene_id", how="left")
 print(len(data))
 
 
-# In[48]:
+# In[58]:
 
 
 data = data.merge(rna_len_gene, on="gene_id", how="left").merge(n_exons_gene, on="gene_id", how="left")
 print(len(data))
 
 
-# In[49]:
+# In[59]:
 
 
 data = data.merge(closest_endo_gene[["gene_id", "closest_endo_snp_distance", "closest_endo_snp_id",
@@ -413,7 +503,7 @@ data = data.merge(closest_endo_gene[["gene_id", "closest_endo_snp_distance", "cl
 print(len(data))
 
 
-# In[50]:
+# In[60]:
 
 
 # for n tss and n enh, NAs do not mean lack of data but mean 0 -- so replace NAs in these cols with 0
@@ -421,7 +511,7 @@ data["n_tss"] = data["n_tss"].fillna(0)
 data["n_enh"] = data["n_enh"].fillna(0)
 
 
-# In[51]:
+# In[61]:
 
 
 data["short_gene_id"] = data["gene_id"].str.split("_", expand=True)[0]
@@ -430,7 +520,7 @@ data["minimal_biotype"] = data.apply(min_biotype, axis=1)
 data.minimal_biotype.value_counts()
 
 
-# In[52]:
+# In[62]:
 
 
 # remove bad biotypes we don't care about (like pseudogenes) which will have a null gene_name value
@@ -440,30 +530,29 @@ len(data_filt)
 
 # ## 5. create df including only genes in screen + include endo RNAseq features
 
-# In[53]:
+# In[63]:
 
 
 genes_in_screen = hits["gene_id"].unique()
 len(genes_in_screen)
 
 
-# In[54]:
+# In[64]:
 
 
-hits["min_hit"] = hits.apply(min_hit, axis=1)
-hits.min_hit.value_counts()
+hits.is_hit.value_counts()
 
 
-# In[55]:
+# In[65]:
 
 
-gene_hit_status = hits[["gene_id", "gene_name", "endo_ctrl_val", "cleaner_gene_biotype",
-                        "min_hit"]].sort_values(by=["gene_id", "min_hit"]).drop_duplicates(subset="gene_id", 
+gene_hit_status = hits[["gene_id", "gene_name", "ctrl_status", "cleaner_gene_biotype",
+                        "is_hit"]].sort_values(by=["gene_id", "is_hit"]).drop_duplicates(subset="gene_id", 
                                                                                            keep="first")
 gene_hit_status.head()
 
 
-# In[56]:
+# In[66]:
 
 
 print(len(data))
@@ -472,101 +561,126 @@ print(len(df_screen))
 df_screen.head()
 
 
-# In[57]:
+# In[67]:
 
 
 df_screen = df_screen.merge(endo_exp, on="gene_id").merge(endo_fc, on="gene_id")
 len(df_screen)
 
 
-# In[58]:
+# In[68]:
 
 
-df_screen[df_screen["min_hit"] == "hit"].minimal_biotype.value_counts()
+df_screen[df_screen["is_hit"] == "hit"].minimal_biotype.value_counts()
 
 
-# In[59]:
+# In[69]:
 
 
-tmp = df_screen[df_screen["min_hit"] == "hit"][["gene_name", "minimal_biotype", "endo_ctrl_val", "cleaner_gene_biotype"]]
+tmp = df_screen[df_screen["is_hit"] == "hit"][["gene_name", "minimal_biotype", "ctrl_status", "cleaner_gene_biotype"]]
 tmp
 
 
-# In[60]:
+# In[70]:
 
 
-tmp.groupby(["minimal_biotype", "endo_ctrl_val"])["gene_name"].agg("count")
+tmp.groupby(["minimal_biotype", "ctrl_status"])["gene_name"].agg("count")
+
+
+# In[71]:
+
+
+tmp[(tmp["minimal_biotype"] == "mRNA") & (tmp["ctrl_status"] == "experimental")]
 
 
 # ## 6. write final files
 
 # ### general features for all genes
 
-# In[61]:
+# In[72]:
 
 
 meta_cols = ["gene_id", "gene_name", "csf", "cleaner_gene_biotype", "minimal_biotype"]
-sub_feature_cols = ['max_eff', 'max_exp', 'gc', 'n_tss', 'n_enh', 'enh_dist', 'prom_cons',
+sub_feature_cols = ['max_eff', 'max_exp', 'gc', 'n_tss', 'n_enh', 'enh_tss_dist', 'enh_tran_dist', 'prom_cons',
                     'exon_cons', 'dna_len', 'rna_len', 'n_exons']
 
 
-# In[62]:
+# In[73]:
 
 
 all_cols = meta_cols + sub_feature_cols
 
 
-# In[63]:
+# In[74]:
 
 
 supp = data_filt[all_cols]
 supp.head()
 
 
-# In[64]:
+# In[75]:
 
 
-supp.to_csv("../../../data/03__features/SuppTable_AllFeatures.txt", sep="\t", index=False)
+supp[supp["gene_name"] == "DIGIT"]
+
+
+# In[76]:
+
+
+supp.to_csv("../../../data/03__features/all_features.tmp", sep="\t", index=False)
 
 
 # ### + endo features for screen genes
 
-# In[65]:
+# In[77]:
 
 
-meta_cols = ["gene_id", "gene_name", "csf", "cleaner_gene_biotype", "minimal_biotype", "endo_ctrl_val", "min_hit"]
-sub_feature_cols = ['max_eff', 'max_exp', 'gc', 'n_tss', 'n_enh', 'enh_dist', 'prom_cons',
+meta_cols = ["gene_id", "gene_name", "csf", "cleaner_gene_biotype", "minimal_biotype", "is_hit"]
+sub_feature_cols = ['max_eff', 'max_exp', 'gc', 'n_tss', 'n_enh', 'enh_tss_dist', 'enh_tran_dist', 'prom_cons',
                     'exon_cons', 'dna_len', 'rna_len', 'n_exons', 'hESC_mean', 'endo_mean', 'endo_hESC_abslog2fc',
-                    'closest_endo_snp_distance', 'closest_endo_snp_id', 'closest_endo_snp_disease']
+                    'closest_endo_snp_distance', 'closest_endo_snp_id', 'closest_endo_snp_disease', 'DE_enh_tss_dist',
+                    'DE_enh_tran_dist']
 
 
-# In[66]:
+# In[78]:
 
 
 all_cols = meta_cols + sub_feature_cols
 
 
-# In[67]:
+# In[79]:
 
 
 supp = df_screen[all_cols]
 supp.head()
 
 
-# In[68]:
+# In[80]:
 
 
-supp.to_csv("../../../data/03__features/SuppTable_ScreenGenes.txt", sep="\t", index=False)
+supp.to_csv("../../../data/03__features/SuppTable_S5.locus_features.txt", sep="\t", index=False)
 
 
-# In[70]:
+# In[81]:
 
 
 ### look at GWAS hits
 tmp = supp[supp["minimal_biotype"] == "lncRNA"]
-tmp = tmp[tmp["min_hit"] == "hit"]
+tmp = tmp[tmp["is_hit"] == "hit"]
 tmp.sort_values(by="closest_endo_snp_distance")[["gene_name", "closest_endo_snp_distance",
                                                  "closest_endo_snp_id", "closest_endo_snp_disease"]]
+
+
+# In[82]:
+
+
+supp[supp["gene_name"] == "FOXD3-AS1"].iloc[0]
+
+
+# In[83]:
+
+
+supp[supp["gene_name"] == "LINC00623"].iloc[0]
 
 
 # In[ ]:

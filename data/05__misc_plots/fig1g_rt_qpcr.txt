@@ -1,0 +1,4 @@
+gene_name	scram_mean	scram_error	sgrna_mean	sgrna_error
+LINC00261	1	0.096	0.01350839	0.003
+HOTAIRM1	1	0.193	0.001676886	0.073
+PAX6-AS1	1	0.274	0.1344368	0.079

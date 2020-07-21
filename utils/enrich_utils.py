@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[ ]:
@@ -125,6 +125,22 @@ def clean_split_col(row, col):
 # In[ ]:
 
 
+def clean_split_col_updated(row, col):
+    old = row[col].strip()
+    if old.startswith("["):
+        new = old.strip()[1:-1]
+    elif old[-1] == "]":
+        new = old.strip()[1:-1]
+    elif old[0] == "'":
+        new = old.strip()[1:-1]
+    else:
+        new = old
+    return new
+
+
+# In[ ]:
+
+
 def is_hit(row):
     if pd.isnull(row.padj):
         return "no hit"
@@ -132,4 +148,16 @@ def is_hit(row):
         return "stringent hit"
     else:
         return "lenient hit"
+
+
+# In[ ]:
+
+
+def is_crisphie_hit(row):
+    if pd.isnull(row.FDR):
+        return "not considered"
+    elif row.FDR < 0.1:
+        return "hit"
+    else:
+        return "no hit"
 

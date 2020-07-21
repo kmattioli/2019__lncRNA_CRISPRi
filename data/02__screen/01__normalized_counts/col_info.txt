@@ -1,0 +1,7 @@
+column	condition	rep	time
+DZ_Rep1	DZ	Rep1	initial
+DZ_Rep2	DZ	Rep2	initial
+Pos_Rep1	Pos	Rep1	late
+Pos_Rep2	Pos	Rep2	late
+Neg_Rep1	Neg	Rep1	late
+Neg_Rep2	Neg	Rep2	late

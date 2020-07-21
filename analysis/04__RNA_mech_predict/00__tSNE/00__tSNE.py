@@ -1,6 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # 01__tSNE
+# 
+# in this notebook, i plot the 11 genomic features aggregated for lncRNAs and mRNAs in 2D using tSNE, and then perform k-means clustering.
+# 
+# figures in this notebook:
+# - Fig 6B-D: tSNE with various things highlighted
+# - Fig S7: tSNE colored by feature
+# 
+# tables in this notebook:
+# - Table S7: result of clustering analysis
+
 # In[1]:
 
 
@@ -71,13 +82,13 @@ def min_biotype(row):
 # In[5]:
 
 
-data_f = "../../../data/03__features/SuppTable_AllFeatures.txt"
+data_f = "../../../data/03__features/all_features.tmp"
 
 
 # In[6]:
 
 
-hits_f = "../../../data/03__features/SuppTable_ScreenGenes.txt"
+hits_f = "../../../data/03__features/SuppTable_S5.locus_features.txt"
 
 
 # ## 1. import data
@@ -92,27 +103,39 @@ data.head()
 # In[8]:
 
 
+data[data["gene_name"] == "DIGIT"]
+
+
+# In[9]:
+
+
 hits = pd.read_table(hits_f)
 hits.head()
 
 
+# In[10]:
+
+
+len(hits)
+
+
 # ## 2. filter data -- remove bad biotypes & rows with NA features
 
-# In[9]:
+# In[11]:
 
 
 data_filt = data[~pd.isnull(data["gene_name"])]
 len(data_filt)
 
 
-# In[10]:
+# In[12]:
 
 
 data_filt_nonan = data_filt.dropna(axis=0)
 len(data_filt_nonan)
 
 
-# In[11]:
+# In[13]:
 
 
 meta_cols = ["gene_id", "gene_name", "csf", "cleaner_gene_biotype", "minimal_biotype"]
@@ -124,27 +147,27 @@ all_feature_cols = ['IMR-90_eff_mean', 'IMR-90_exp_mean', 'IMR-90_eff_ratio', 'H
        'HT1080_exp_mean', 'HT1080_eff_ratio', 'SK-N-DZ_eff_mean', 'SK-N-DZ_exp_mean', 'SK-N-DZ_eff_ratio',
        'SK-MEL-5_eff_mean', 'SK-MEL-5_exp_mean', 'SK-MEL-5_eff_ratio', 'GM12878_eff_mean',
        'GM12878_exp_mean', 'GM12878_eff_ratio', 'max_eff', 'max_exp', 'max_ratio', 'gc', 'n_tss', 'n_enh', 
-       'enh_dist', 'prom_cons', 'exon_cons', 'dna_len', 'rna_len', 'n_exons']
+       'enh_tss_dist', 'prom_cons', 'exon_cons', 'dna_len', 'rna_len', 'n_exons']
 
 
-# In[12]:
+# In[14]:
 
 
-log_cols = ["max_exp", "enh_dist", "dna_len", "rna_len", "n_exons"]
+log_cols = ["max_exp", "enh_tss_dist", "dna_len", "rna_len", "n_exons"]
 for col in log_cols:
     data_filt_nonan["%s_log" % col] = np.log10(data_filt_nonan[col]+1)
 
 
-# In[13]:
+# In[15]:
 
 
-sub_feature_cols = ['max_eff', 'max_exp', 'gc', 'n_tss', 'n_enh', 'enh_dist', 'prom_cons',
+sub_feature_cols = ['max_eff', 'max_exp', 'gc', 'n_tss', 'n_enh', 'enh_tss_dist', 'prom_cons',
                     'exon_cons', 'dna_len', 'rna_len', 'n_exons']
 
 
 # ## 3. calculate t-SNE embeddings
 
-# In[14]:
+# In[16]:
 
 
 # Separating out the features
@@ -155,13 +178,13 @@ x = StandardScaler().fit_transform(x)
 len(x)
 
 
-# In[15]:
+# In[17]:
 
 
 x.shape
 
 
-# In[16]:
+# In[18]:
 
 
 x_embedded = TSNE(n_components=2).fit_transform(x)
@@ -170,7 +193,7 @@ x_embedded
 
 # ## 4. cluster the data
 
-# In[17]:
+# In[19]:
 
 
 alg = KMeans(n_clusters=2)
@@ -178,25 +201,11 @@ alg.fit_predict(x)
 labels = alg.labels_
 
 
-# In[18]:
+# In[20]:
 
 
 print(len(labels))
 labels
-
-
-# In[19]:
-
-
-unique, counts = np.unique(labels, return_counts=True)
-print(np.asarray((unique, counts)).T)
-
-
-# In[20]:
-
-
-labels = [x+1 for x in labels]
-len(labels)
 
 
 # In[21]:
@@ -209,10 +218,24 @@ print(np.asarray((unique, counts)).T)
 # In[22]:
 
 
-len(unique)
+labels = [x+1 for x in labels]
+len(labels)
 
 
 # In[23]:
+
+
+unique, counts = np.unique(labels, return_counts=True)
+print(np.asarray((unique, counts)).T)
+
+
+# In[24]:
+
+
+len(unique)
+
+
+# In[25]:
 
 
 df = pd.DataFrame(data = x_embedded, columns = ["f1", "f2"])
@@ -224,14 +247,14 @@ df.head()
 
 # ## 5. visualize data using t-SNE
 
-# In[24]:
+# In[26]:
 
 
 c1 = sns.color_palette("magma", n_colors=2, desat=0.5)[0]
 c2 = sns.color_palette("plasma", n_colors=12, desat=0.5)[10]
 
 
-# In[25]:
+# In[27]:
 
 
 lut = dict(zip(list(range(1, len(unique)+1)), [c2, c1]))
@@ -240,7 +263,7 @@ df["color"] = row_colors
 df.head()
 
 
-# In[26]:
+# In[28]:
 
 
 # sample mRNAs and lncRNAs for plotting purposes
@@ -253,13 +276,13 @@ all_plot = mrnas.append(lncrnas).append(spec)
 len(all_plot)
 
 
-# In[27]:
+# In[29]:
 
 
 spec
 
 
-# In[28]:
+# In[30]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -276,7 +299,7 @@ ax.set_ylabel("t-SNE dimension 2")
 fig.savefig("Fig6B.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[29]:
+# In[31]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -294,7 +317,7 @@ plt.show()
 fig.savefig("Fig6C.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[30]:
+# In[32]:
 
 
 titles = ["       max splicing efficiency       ", "       log10 max expression       ", 
@@ -349,7 +372,7 @@ plt.subplots_adjust(hspace=0.5, wspace=0.3)
 plt.savefig("FigS7.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[31]:
+# In[33]:
 
 
 fig, ax = plt.subplots(figsize=(1.75, 1.5), nrows=1, ncols=1)
@@ -366,38 +389,38 @@ plt.show()
 
 # ## 6. limit to genes in screen
 
-# In[32]:
+# In[34]:
 
 
 hits.head()
 
 
-# In[33]:
+# In[35]:
 
 
-hits.min_hit.value_counts()
+hits.is_hit.value_counts()
 
 
-# In[34]:
+# In[36]:
 
 
 print(len(df))
-df_screen = df.merge(hits[["gene_id", "min_hit"]], on="gene_id")
+df_screen = df.merge(hits[["gene_id", "is_hit"]], on="gene_id")
 print(len(df_screen))
 df_screen.head()
 
 
-# In[35]:
+# In[37]:
 
 
 mrnas_screen = df_screen[df_screen["minimal_biotype"] == "mRNA"]
 lncrnas_screen = df_screen[df_screen["minimal_biotype"] != "mRNA"]
 
-mrnas_hits = mrnas_screen[mrnas_screen["min_hit"] == "hit"]
-lncrnas_hits = lncrnas_screen[lncrnas_screen["min_hit"] == "hit"]
+mrnas_hits = mrnas_screen[mrnas_screen["is_hit"] == "hit"]
+lncrnas_hits = lncrnas_screen[lncrnas_screen["is_hit"] == "hit"]
 
 
-# In[36]:
+# In[38]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -412,7 +435,7 @@ ax.set_ylabel("t-SNE dimension 2")
 plt.show()
 
 
-# In[37]:
+# In[39]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -436,32 +459,39 @@ plt.show()
 fig.savefig("Fig6D.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[38]:
+# In[40]:
 
 
 dedup = lncrnas_hits[["f1", "f2", "minimal_biotype", "cleaner_gene_biotype", "gene_name", "cluster"]].drop_duplicates()
 print(len(dedup))
-dedup.sort_values(by="f1", ascending=False)
-
-
-# ## 9. write files
-
-# In[39]:
-
-
-len(df)
-
-
-# In[40]:
-
-
-df.minimal_biotype.value_counts()
+dedup.sort_values(by="f1", ascending=False).head(10)
 
 
 # In[41]:
 
 
-sub_cols = ["gene_id", "gene_name", "minimal_biotype", "max_eff", "max_exp", "gc", "n_tss", "n_enh", "enh_dist",
+tmp = dedup[dedup["cluster"] == 1]
+tmp.sort_values(by="f1")
+
+
+# ## 9. write files
+
+# In[42]:
+
+
+len(df)
+
+
+# In[43]:
+
+
+df.minimal_biotype.value_counts()
+
+
+# In[44]:
+
+
+sub_cols = ["gene_id", "gene_name", "minimal_biotype", "max_eff", "max_exp", "gc", "n_tss", "n_enh", "enh_tss_dist",
             "prom_cons", "exon_cons", "dna_len", "rna_len", "n_exons", "f1", "f2", "cluster"]
 supp = df[sub_cols]
 supp.columns = ["gene_id", "gene_name", "biotype", "max_splicing_eff", "max_expression", "gc", "n_tss", "n_enh",
@@ -469,38 +499,39 @@ supp.columns = ["gene_id", "gene_name", "biotype", "max_splicing_eff", "max_expr
                 "n_exons", "tsne_f1", "tsne_f2", "assigned_cluster"]
 
 
-# In[42]:
+# In[45]:
 
 
 supp = supp.sort_values(by="gene_id")
 supp.head()
 
 
-# In[43]:
+# In[46]:
 
 
-supp.to_csv("../../../data/04__clusters/SuppTable_AllClusters.txt", sep="\t", index=False)
+supp.to_csv("../../../data/04__clusters/SuppTable_S7.cluster_predictions.txt", sep="\t", index=False)
 
 
-# In[44]:
+# In[47]:
 
 
 df_screen.head()
 
 
-# In[45]:
+# In[48]:
 
 
-sub_cols = ["gene_id", "gene_name", "minimal_biotype", "cleaner_gene_biotype", "f1", "f2", "min_hit", "cluster"]
+sub_cols = ["gene_id", "gene_name", "minimal_biotype", "cleaner_gene_biotype", "f1", "f2", "is_hit", "cluster"]
 supp = df_screen[sub_cols]
 supp.columns = ["gene_id", "gene_name", "biotype", "lncrna_class", "tsne_f1", "tsne_f2", "screen_hit", 
                 "assigned_cluster"]
 
 
-# In[46]:
+# In[49]:
 
 
-supp.to_csv("../../../data/04__clusters/SuppTable_ScreenClusters.txt", sep="\t", index=False)
+supp[supp["gene_name"].isin(["RP11-1144P22.1", "CTD-2058B24.2", "DANCR", "DIGIT", "RP11-222K16.2",
+                             "FOXD3-AS1", "RP11-479O16.1", "RP11-120D5.1"])]
 
 
 # In[ ]:

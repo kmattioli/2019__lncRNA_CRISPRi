@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # 01__rna_seq_analysis
@@ -350,7 +350,7 @@ expr_gene_filt = expr_gene_filt[~expr_gene_filt["csf"].isin(bad_csf)]
 # In[35]:
 
 
-order = ["protein_coding", "intergenic", "promoter_overlap", "transcript_overlap", "gene_nearby"]
+order = ["intergenic", "promoter_overlap", "transcript_overlap", "gene_nearby"]
 pal = {"protein_coding": sns.color_palette("deep")[0], "intergenic": "firebrick", "promoter_overlap": "firebrick",
        "transcript_overlap": "firebrick", "gene_nearby": "firebrick"}
 
@@ -358,8 +358,14 @@ pal = {"protein_coding": sns.color_palette("deep")[0], "intergenic": "firebrick"
 # In[36]:
 
 
-plt.figure(figsize=(1.6,1.75))
-ax = sns.countplot(y="cleaner_biotype", data=expr_gene_filt[expr_gene_filt["threshold"] == "expressed"], 
+expr_filt[expr_filt["threshold"] == "expressed"]["csf"].value_counts()
+
+
+# In[37]:
+
+
+plt.figure(figsize=(1.6,1.4))
+ax = sns.countplot(y="cleaner_transcript_biotype", data=expr_filt[expr_filt["threshold"] == "expressed"], 
                    palette=pal, order=order)
 
 for p in ax.patches:
@@ -369,22 +375,21 @@ for p in ax.patches:
     
     ax.text(w + 100, y + h/2, int(w), ha="left", va="center", fontsize=fontsize) 
 
-plt.xlim((0,23000))
-plt.legend(loc=4)
-plt.xlabel("count of genes expressed at > 0.1 tpm\nin at least 1 lineage")
+plt.xlim((0,6000))
+plt.xlabel("count of transcripts expressed at > 0.1 tpm\nin at least 1 lineage")
 plt.ylabel("")
-ax.set_yticklabels(["protein-coding", "intergenic", "promoter overlap", "transcript overlap", "gene nearby"])
+ax.set_yticklabels(["intergenic", "promoter overlap", "transcript overlap", "gene nearby"])
 plt.savefig("Fig2D.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[37]:
+# In[38]:
 
 
 expr_filt["coding_type"] = expr_filt.apply(coding_type, axis=1)
 expr_gene_filt["coding_type"] = expr_gene_filt.apply(coding_type, axis=1)
 
 
-# In[38]:
+# In[39]:
 
 
 expr_filt["hESC_thresh"] = expr_filt.apply(hESC_thresh, axis=1)
@@ -393,7 +398,7 @@ expr_filt["meso_thresh"] = expr_filt.apply(meso_thresh, axis=1)
 expr_filt.head()
 
 
-# In[39]:
+# In[40]:
 
 
 expr_gene_filt["hESC_thresh"] = expr_gene_filt.apply(hESC_thresh, axis=1)
@@ -401,7 +406,7 @@ expr_gene_filt["endo_thresh"] = expr_gene_filt.apply(endo_thresh, axis=1)
 expr_gene_filt["meso_thresh"] = expr_gene_filt.apply(meso_thresh, axis=1)
 
 
-# In[40]:
+# In[41]:
 
 
 hESC_nc = set(expr_filt[(expr_filt["hESC_thresh"] == "expressed") & (expr_filt["coding_type"] == "non-coding")]["gene_name"])
@@ -421,20 +426,20 @@ endo_meso_nc = set.intersection(endo_nc, meso_nc)
 print("there are %s lncRNAs expressed in endo and meso lineages" % (len(endo_meso_nc)))
 
 
-# In[41]:
+# In[42]:
 
 
 expr_ncRNA_filt = expr_filt[expr_filt["coding_type"] == "non-coding"]
 expr_ncRNA_filt["expr_profile"] = expr_ncRNA_filt.apply(get_expr_profile, axis=1)
 
 
-# In[42]:
+# In[43]:
 
 
 len(expr_ncRNA_filt[expr_ncRNA_filt["expr_profile"] != "not expressed"])
 
 
-# In[43]:
+# In[44]:
 
 
 # check for size of libraries right now
@@ -442,13 +447,13 @@ expr_ncRNA_gene_filt = expr_gene_filt[expr_gene_filt["coding_type"] == "non-codi
 expr_ncRNA_gene_filt["expr_profile"] = expr_ncRNA_gene_filt.apply(get_expr_profile, axis=1)
 
 
-# In[44]:
+# In[45]:
 
 
 len(expr_ncRNA_gene_filt)
 
 
-# In[45]:
+# In[46]:
 
 
 fig = plt.figure(figsize=(2,2))
@@ -471,14 +476,14 @@ fig.savefig("FigS3B.pdf", bbox_inches="tight", dpi="figure")
 
 # ### 5. check correlations between replicates
 
-# In[46]:
+# In[47]:
 
 
 expr_reps = expr[["hESC_rep1", "hESC_rep2", "endo_rep1", "endo_rep2", "meso_rep1", "meso_rep2"]]
 expr_reps_corr = expr_reps.corr(method="spearman")
 
 
-# In[47]:
+# In[48]:
 
 
 # cg = sns.clustermap(expr_reps_corr, annot=True, vmin=0.7, cmap=sns.cubehelix_palette(as_cmap=True), figsize=(2.25,2.25))
@@ -487,14 +492,14 @@ expr_reps_corr = expr_reps.corr(method="spearman")
 # plt.savefig("replicate_corrs_spearman.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[48]:
+# In[49]:
 
 
 expr_gene_reps = expr_gene[["hESC_rep1", "hESC_rep2", "endo_rep1", "endo_rep2", "meso_rep1", "meso_rep2"]]
 expr_gene_reps_corr = expr_gene_reps.corr(method="spearman")
 
 
-# In[49]:
+# In[50]:
 
 
 cg = sns.clustermap(expr_gene_reps_corr, annot=True, cmap=sns.cubehelix_palette(as_cmap=True), figsize=(2.25,2.25))
@@ -503,14 +508,14 @@ plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
 plt.savefig("FigS3A.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[50]:
+# In[51]:
 
 
 expr_thresh = expr[expr["threshold"] == "expressed"]
 expr_gene_thresh = expr_gene[expr_gene["threshold"] == "expressed"]
 
 
-# In[51]:
+# In[52]:
 
 
 # expr_reps = expr_thresh[["hESC_rep1", "hESC_rep2", "endo_rep1", "endo_rep2", "meso_rep1", "meso_rep2"]]
@@ -522,7 +527,7 @@ expr_gene_thresh = expr_gene[expr_gene["threshold"] == "expressed"]
 # plt.savefig("replicate_corrs_spearman_filtered.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[52]:
+# In[53]:
 
 
 # expr_gene_reps = expr_gene_thresh[["hESC_rep1", "hESC_rep2", "endo_rep1", "endo_rep2", "meso_rep1", "meso_rep2"]]
@@ -536,41 +541,41 @@ expr_gene_thresh = expr_gene[expr_gene["threshold"] == "expressed"]
 
 # ### 6. make some heatmaps
 
-# In[53]:
+# In[54]:
 
 
 expr_filt_ex = expr_filt[expr_filt["threshold"] == "expressed"]
 print("there are %s transcripts expressed at at least 0.1 tpm in any of the 4 lineages" % (len(expr_filt_ex)))
 
 
-# In[54]:
+# In[55]:
 
 
 expr_gene_filt_ex = expr_gene_filt[expr_gene_filt["threshold"] == "expressed"]
 print("there are %s genes expressed at at least 0.1 tpm in any of the 4 lineages" % (len(expr_gene_filt_ex)))
 
 
-# In[55]:
+# In[56]:
 
 
 expr_ncRNA = expr_filt[(expr_filt["cleaner_gene_biotype"] != "protein_coding") & (expr_filt["threshold"] == "expressed")]
 print("there are %s ncRNA transcripts expressed at at least 0.1 tpm in any of the 4 lineages" % (len(expr_ncRNA)))
 
 
-# In[56]:
+# In[57]:
 
 
 expr_gene_ncRNA = expr_gene_filt[(expr_gene_filt["cleaner_biotype"] != "protein_coding") & (expr_gene_filt["threshold"] == "expressed")]
 print("there are %s ncRNA genes expressed at at least 0.1 tpm in any of the 4 lineages" % (len(expr_gene_ncRNA)))
 
 
-# In[57]:
+# In[58]:
 
 
 cmap = sns.diverging_palette(220, 20, as_cmap=True)
 
 
-# In[58]:
+# In[59]:
 
 
 expr_ncRNA_heatmap = expr_gene_ncRNA[["hESC_rep1", "hESC_rep2", "endo_rep1", "endo_rep2", "meso_rep1", "meso_rep2"]]
@@ -581,21 +586,21 @@ plt.suptitle("expression of all ncRNA genes\n[z-score plotted]")
 plt.savefig("Fig2A_1.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[59]:
+# In[60]:
 
 
 expr_mRNA = expr_filt[(expr_filt["gene_biotype"] == "protein_coding") & (expr_filt["threshold"] == "expressed")]
 print("there are %s protein-coding transcripts expressed at at least 0.1 tpm in any of the 4 lineages" % (len(expr_mRNA)))
 
 
-# In[60]:
+# In[61]:
 
 
 expr_gene_mRNA = expr_gene_filt[(expr_gene_filt["gene_biotype"] == "protein_coding") & (expr_gene_filt["threshold"] == "expressed")]
 print("there are %s protein-coding genes expressed at at least 0.1 tpm in any of the 4 lineages" % (len(expr_gene_mRNA)))
 
 
-# In[61]:
+# In[62]:
 
 
 expr_mRNA_heatmap = expr_gene_mRNA.sort_values(by="overall_mean", ascending=False).head(10000)[["hESC_rep1", "hESC_rep2", "endo_rep1", "endo_rep2", "meso_rep1", "meso_rep2"]]
@@ -607,7 +612,7 @@ plt.savefig("Fig2A_2.pdf", bbox_inches="tight")
 
 # ### 7. plot expression of certain markers
 
-# In[62]:
+# In[63]:
 
 
 marker_genes = ["POU5F1", "NANOG", "EOMES", "GATA6", "T"]
@@ -615,7 +620,7 @@ sub = expr_gene[expr_gene["gene_name"].isin(marker_genes)]
 sub
 
 
-# In[63]:
+# In[64]:
 
 
 fig, axarr = plt.subplots(figsize=(0.75, 3.5), ncols=1,  nrows=5, sharex=True)
@@ -641,14 +646,14 @@ fig.savefig("Fig2B.pdf", dpi="figure", bbox_inches="tight")
 
 # ### 8. plot tissue specificity of lncRNAs vs mRNAs
 
-# In[64]:
+# In[65]:
 
 
 all_ncRNA = expr_gene[expr_gene["csf"] != "protein_coding"]
 all_mRNA = expr_gene[expr_gene["csf"] == "protein_coding"]
 
 
-# In[65]:
+# In[66]:
 
 
 all_ncRNA_mean = all_ncRNA[["hESC_mean", "endo_mean", "meso_mean"]]
@@ -664,10 +669,10 @@ all_ncRNA_mean["gene_name"] = all_ncRNA["gene_name"]
 all_mRNA_mean["gene_name"] = all_mRNA["gene_name"]
 
 
-# In[66]:
+# In[67]:
 
 
-all_ncRNA_mean_array = all_ncRNA_mean.drop("gene_name", axis=1).as_matrix()
+all_ncRNA_mean_array = np.asarray(all_ncRNA_mean.drop("gene_name", axis=1))
 ncRNA_max = np.max(all_ncRNA_mean_array, axis=1)
 tmp = all_ncRNA_mean_array.T / ncRNA_max
 tmp = 1 - tmp.T
@@ -676,10 +681,10 @@ print(len(ncRNA_specs))
 print(len(all_ncRNA))
 
 
-# In[67]:
+# In[68]:
 
 
-all_mRNA_mean_array = all_mRNA_mean.drop("gene_name", axis=1).as_matrix()
+all_mRNA_mean_array = np.asarray(all_mRNA_mean.drop("gene_name", axis=1))
 mRNA_max = np.max(all_mRNA_mean_array, axis=1)
 tmp = all_mRNA_mean_array.T / mRNA_max
 tmp = 1 - tmp.T
@@ -688,7 +693,7 @@ print(len(mRNA_specs))
 print(len(all_mRNA))
 
 
-# In[68]:
+# In[69]:
 
 
 # # randomly sample for cdf plotting
@@ -696,7 +701,7 @@ print(len(all_mRNA))
 # mRNA_specs_samp = np.random.choice(mRNA_specs, size=50)
 
 
-# In[69]:
+# In[70]:
 
 
 # remove transcripts with all 0 expression values (these have tissue spec of NA)
@@ -707,7 +712,7 @@ print(len(mRNA_specs_nonan))
 print(len(ncRNA_specs_nonan))
 
 
-# In[70]:
+# In[71]:
 
 
 all_ncRNA_mean["tissue_spec"] = ncRNA_specs
@@ -720,7 +725,7 @@ tissue_spec = all_ncRNA_mean.append(all_mRNA_mean)
 tissue_spec.sample(5)
 
 
-# In[71]:
+# In[72]:
 
 
 # compare lncRNAs to TFs
@@ -729,21 +734,21 @@ print(len(tfs.gene_name.unique()))
 tfs.head()
 
 
-# In[72]:
+# In[73]:
 
 
 tfs_spec = tissue_spec[tissue_spec["gene_name"].isin(tfs["gene_name"])]["tissue_spec"]
 len(tfs_spec)
 
 
-# In[73]:
+# In[74]:
 
 
 tf_specs_nonan = tfs_spec[~np.isnan(tfs_spec)]
 len(tf_specs_nonan)
 
 
-# In[74]:
+# In[75]:
 
 
 fig, axarr = plt.subplots(figsize=(1.25,1.75), nrows=3, ncols=1, sharex=True, sharey=True)
@@ -775,7 +780,7 @@ fig.savefig("Fig2F.pdf", bbox_inches="tight", dpi="figure")
 
 # ### 9. GO plots
 
-# In[75]:
+# In[76]:
 
 
 endo_go_f = "../../misc/02__GO_enrichments/endo_enriched.txt"
@@ -783,7 +788,7 @@ endo_go = pd.read_table(endo_go_f, skiprows=7)
 endo_go.head()
 
 
-# In[76]:
+# In[77]:
 
 
 endo_go["neg_p"] = -np.log10(endo_go["upload_1 (P-value)"])
@@ -791,7 +796,7 @@ endo_go["process"] = endo_go["GO biological process complete"].str.split(' \\(',
 endo_go.head()
 
 
-# In[77]:
+# In[78]:
 
 
 meso_go_f = "../../misc/02__GO_enrichments/meso_enriched.txt"
@@ -799,7 +804,7 @@ meso_go = pd.read_table(meso_go_f, skiprows=7)
 meso_go.head()
 
 
-# In[78]:
+# In[79]:
 
 
 meso_go["neg_p"] = -np.log10(meso_go["upload_1 (P-value)"])
@@ -807,7 +812,7 @@ meso_go["process"] = meso_go["GO biological process complete"].str.split(' \\(',
 meso_go.head()
 
 
-# In[79]:
+# In[80]:
 
 
 fig, axarr = plt.subplots(figsize=(2, 3.5), ncols=1, nrows=2, sharex=False)
@@ -840,34 +845,34 @@ fig.savefig("Fig2C.pdf", dpi="figure", bbox_inches="tight")
 
 # ### 8. find differentially expressed transcripts
 
-# In[80]:
+# In[81]:
 
 
 diff_hESC_endo = pd.read_table(diff_hESC_endo_f, sep="\t")
 diff_hESC_meso = pd.read_table(diff_hESC_meso_f, sep="\t")
 
 
-# In[81]:
+# In[82]:
 
 
 diff_hESC_endo.fillna("sleuth NA", inplace=True)
 diff_hESC_meso.fillna("sleuth NA", inplace=True)
 
 
-# In[82]:
+# In[83]:
 
 
 diff = diff_hESC_endo.merge(diff_hESC_meso, on="target_id", how="outer", suffixes=("_hESC_endo", "_hESC_meso"))
 diff.head()
 
 
-# In[83]:
+# In[84]:
 
 
 diff[diff["target_id"] == "DIGIT"]
 
 
-# In[84]:
+# In[85]:
 
 
 diff["hESC_vs_endo"] = diff.apply(is_significant, colname="qval_hESC_endo", alpha=0.05, axis=1)
@@ -875,7 +880,7 @@ diff["hESC_vs_meso"] = diff.apply(is_significant, colname="qval_hESC_meso", alph
 diff.sample(5)
 
 
-# In[85]:
+# In[86]:
 
 
 expr_diff = expr.merge(diff, left_on="transcript_id", right_on="target_id", how="inner")
@@ -889,7 +894,7 @@ expr_diff["meso_hESC_log2fc_abs"] = np.abs(expr_diff["meso_hESC_log2fc"])
 expr_diff.sample(5)
 
 
-# In[86]:
+# In[87]:
 
 
 sig_hESC_endo = expr_diff[(expr_diff["hESC_vs_endo"] == "significant")]
@@ -899,35 +904,35 @@ print("# of significantly differentially expressed transcripts b/w hESC and endo
 print("# of significantly differentially expressed transcripts b/w hESC and meso: %s" % (len(sig_hESC_meso)))
 
 
-# In[87]:
+# In[88]:
 
 
 print("# of significantly differentially expressed genes with b/w hESC and endo: %s" % (len(sig_hESC_endo.gene_name.unique())))
 print("# of significantly differentially expressed genes with b/w hESC and meso: %s" % (len(sig_hESC_meso.gene_name.unique())))
 
 
-# In[88]:
+# In[89]:
 
 
 sig_hESC_endo_ncRNA = sig_hESC_endo[sig_hESC_endo["gene_name"].isin(expr_ncRNA["gene_name"])]
 sig_hESC_meso_ncRNA = sig_hESC_meso[sig_hESC_meso["gene_name"].isin(expr_ncRNA["gene_name"])]
 
 
-# In[89]:
+# In[90]:
 
 
 print("# of significantly differentially expressed ncRNA transcripts b/w hESC and endo: %s" % (len(sig_hESC_endo_ncRNA)))
 print("# of significantly differentially expressed ncRNA transcripts b/w hESC and meso: %s" % (len(sig_hESC_meso_ncRNA)))
 
 
-# In[90]:
+# In[91]:
 
 
 print("# of significantly differentially expressed ncRNA transcripts b/w hESC and endo: %s" % (len(sig_hESC_endo_ncRNA.gene_name.unique())))
 print("# of significantly differentially expressed ncRNA transcripts b/w hESC and meso: %s" % (len(sig_hESC_meso_ncRNA.gene_name.unique())))
 
 
-# In[91]:
+# In[92]:
 
 
 sig_2fc_hESC_endo = expr_diff[(expr_diff["hESC_vs_endo"] == "significant") & 
@@ -939,28 +944,28 @@ print("# of significantly differentially expressed transcripts with >2 foldchang
 print("# of significantly differentially expressed transcripts with >2 foldchange b/w hESC and meso: %s" % (len(sig_2fc_hESC_meso)))
 
 
-# In[92]:
+# In[93]:
 
 
 print("# of significantly differentially expressed genes with >2 foldchange b/w hESC and endo: %s" % (len(sig_2fc_hESC_endo.gene_name.unique())))
 print("# of significantly differentially expressed genes with >2 foldchange b/w hESC and meso: %s" % (len(sig_2fc_hESC_meso.gene_name.unique())))
 
 
-# In[93]:
+# In[94]:
 
 
 sig_2fc_hESC_endo_ncRNA = sig_2fc_hESC_endo[sig_2fc_hESC_endo["gene_name"].isin(expr_ncRNA["gene_name"])]
 sig_2fc_hESC_meso_ncRNA = sig_2fc_hESC_meso[sig_2fc_hESC_meso["gene_name"].isin(expr_ncRNA["gene_name"])]
 
 
-# In[94]:
+# In[95]:
 
 
 print("# of significantly differentially expressed ncRNA transcripts with >2 foldchange b/w hESC and endo: %s" % (len(sig_2fc_hESC_endo_ncRNA)))
 print("# of significantly differentially expressed ncRNA transcripts with >2 foldchange b/w hESC and meso: %s" % (len(sig_2fc_hESC_meso_ncRNA)))
 
 
-# In[95]:
+# In[96]:
 
 
 print("# of significantly differentially expressed ncRNA transcripts with >2 foldchange b/w hESC and endo: %s" % (len(sig_2fc_hESC_endo_ncRNA.gene_name.unique())))
@@ -969,7 +974,7 @@ print("# of significantly differentially expressed ncRNA transcripts with >2 fol
 
 # ## 9. volcano plots
 
-# In[96]:
+# In[97]:
 
 
 diff_hESC_endo = expr_diff[expr_diff["qval_hESC_endo"] != "sleuth NA"]
@@ -978,45 +983,45 @@ diff_hESC_endo["qval_log10_hESC_endo"] = -np.log10(diff_hESC_endo["qval_hESC_end
 diff_hESC_meso["qval_log10_hESC_meso"] = -np.log10(diff_hESC_meso["qval_hESC_meso"].astype(float))
 
 
-# In[97]:
+# In[98]:
 
 
 diff_hESC_endo["hESC_vs_endo_log"] = diff_hESC_endo.apply(mark_for_volcano, exp_col="endo_hESC_log2fc_abs", sig_col="hESC_vs_endo", axis=1)
 diff_hESC_meso["hESC_vs_meso_log"] = diff_hESC_meso.apply(mark_for_volcano, exp_col="meso_hESC_log2fc_abs", sig_col="hESC_vs_meso", axis=1)
 
 
-# In[98]:
+# In[99]:
 
 
 diff_hESC_endo_ncRNA = diff_hESC_endo[diff_hESC_endo["gene_name"].isin(expr_ncRNA["gene_name"])]
 diff_hESC_meso_ncRNA = diff_hESC_meso[diff_hESC_meso["gene_name"].isin(expr_ncRNA["gene_name"])]
 
 
-# In[99]:
+# In[100]:
 
 
 diff_hESC_endo_ncRNA.hESC_vs_endo_log.value_counts()
 
 
-# In[100]:
+# In[101]:
 
 
 diff_hESC_meso_ncRNA.hESC_vs_meso_log.value_counts()
 
 
-# In[101]:
+# In[102]:
 
 
 len(diff_hESC_endo_ncRNA[diff_hESC_endo_ncRNA["qval_hESC_endo"] < 0.05])
 
 
-# In[102]:
+# In[103]:
 
 
 len(diff_hESC_endo_ncRNA[diff_hESC_endo_ncRNA["qval_hESC_endo"] < 0.05]["gene_name"].unique())
 
 
-# In[103]:
+# In[104]:
 
 
 fig = plt.figure(figsize=(1.5, 1.75))
@@ -1032,7 +1037,7 @@ plt.axhline(y=-np.log10(0.05), linestyle="dashed", color="black", linewidth=1)
 plt.savefig("Fig2E_1.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[104]:
+# In[105]:
 
 
 fig = plt.figure(figsize=(1.5, 1.75))
@@ -1048,19 +1053,19 @@ plt.axhline(y=-np.log10(0.05), linestyle="dashed", color="black", linewidth=1)
 plt.savefig("Fig2E_2.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[105]:
+# In[106]:
 
 
 len(diff_hESC_meso_ncRNA[diff_hESC_meso_ncRNA["qval_hESC_meso"] < 0.05])
 
 
-# In[106]:
+# In[107]:
 
 
 len(diff_hESC_meso_ncRNA[diff_hESC_meso_ncRNA["qval_hESC_meso"] < 0.05]["gene_name"].unique())
 
 
-# In[107]:
+# In[108]:
 
 
 meso_tx = list(diff_hESC_meso_ncRNA[diff_hESC_meso_ncRNA["qval_hESC_meso"] < 0.05]["transcript_id"])
@@ -1070,13 +1075,19 @@ tot_tx = set(tot_tx)
 len(tot_tx)
 
 
-# In[108]:
+# In[109]:
 
 
 len(set(meso_tx).intersection(set(endo_tx)))
 
 
-# In[109]:
+# In[110]:
+
+
+len(set(meso_tx).symmetric_difference(set(endo_tx)))
+
+
+# In[111]:
 
 
 meso_g = list(diff_hESC_meso_ncRNA[diff_hESC_meso_ncRNA["qval_hESC_meso"] < 0.05]["gene_name"])
@@ -1086,7 +1097,7 @@ tot_g = set(tot_g)
 len(tot_g)
 
 
-# In[110]:
+# In[112]:
 
 
 len(set(meso_g).intersection(set(endo_g)))
@@ -1094,7 +1105,7 @@ len(set(meso_g).intersection(set(endo_g)))
 
 # ## 12. write final gene list file
 
-# In[111]:
+# In[113]:
 
 
 final = expr[["transcript_id", "gene_id", "gene_name", "csf", "cleaner_gene_biotype", 
@@ -1113,25 +1124,25 @@ final.fillna("filter not met", inplace=True)
 final.head()
 
 
-# In[112]:
+# In[114]:
 
 
 len(final)
 
 
-# In[113]:
+# In[115]:
 
 
 final.columns
 
 
-# In[114]:
+# In[116]:
 
 
 f = "../../data/00__rna_seq/01__processed_results/rna_seq_results.tsv"
 
 
-# In[115]:
+# In[117]:
 
 
 final.to_csv(f, sep="\t", index=False)
@@ -1139,21 +1150,21 @@ final.to_csv(f, sep="\t", index=False)
 
 # ## 13. write supplemental table -- lncRNA RNA-seq results
 
-# In[116]:
+# In[118]:
 
 
 supp = final[final["csf"] == "lncRNA_good_csf"]
 len(supp)
 
 
-# In[117]:
+# In[119]:
 
 
 supp["abs_l2fc"] = np.abs(supp["endo_hESC_log2fc"])
 supp = supp.sort_values(by="abs_l2fc", ascending=False)
 
 
-# In[118]:
+# In[120]:
 
 
 supp = supp[["gene_name", "gene_id", "transcript_id", "cleaner_transcript_biotype",
@@ -1161,7 +1172,7 @@ supp = supp[["gene_name", "gene_id", "transcript_id", "cleaner_transcript_biotyp
              "endo_hESC_log2fc", "qval_hESC_endo", "meso_hESC_log2fc", "qval_hESC_meso"]]
 
 
-# In[119]:
+# In[121]:
 
 
 supp.columns = ["gene_name", "gene_id", "transcript_id", "biotype", "hESC_rep1_tpm", "hESC_rep2_tpm",
@@ -1170,9 +1181,15 @@ supp.columns = ["gene_name", "gene_id", "transcript_id", "biotype", "hESC_rep1_t
 supp.head()
 
 
-# In[120]:
+# In[122]:
 
 
-f = "../../data/00__rna_seq/01__processed_results/SuppTable.RNA_seq.txt"
+f = "../../data/00__rna_seq/01__processed_results/SuppTable_S1.RNA_seq.txt"
 supp.to_csv(f, sep="\t", index=False)
+
+
+# In[ ]:
+
+
+
 

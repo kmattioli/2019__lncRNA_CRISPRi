@@ -1,0 +1,206 @@
+import warnings
+warnings.filterwarnings('ignore')
+
+import math
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import re
+import scipy.stats as stats
+import seaborn as sns
+import sys
+import time
+
+from ast import literal_eval
+from scipy.stats import spearmanr
+from scipy.stats import pearsonr
+from statsmodels.sandbox.stats import multicomp
+
+# import utils
+sys.path.append("../../../utils")
+from plotting_utils import *
+
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+mpl.rcParams['figure.autolayout'] = False
+
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
+
+sgrnas_dir = "../../../data/01__design/01__sgRNAs_from_Broad"
+main_grna_f = "%s/Mattioli_CRISPRi_designs_12132017.txt.gz" % sgrnas_dir
+
+lib_f = "../../../data/01__design/02__final_sgRNAs/crispri_with_primers.txt"
+
+data_f = "../../../data/02__screen/02__enrichment_data/SuppTable.sgRNA_results.txt"
+
+val_f = "../../../data/02__screen/03__validation_data/validation_data.xlsx"
+
+main_grnas = pd.read_table(main_grna_f)
+len(main_grnas)
+
+# import other grna files that were run later
+extras = ["1", "2", "3", "4", "digit"]
+extra_crispri = pd.DataFrame()
+for suf in extras:
+    crispri_filename = "%s/crispri_%s.txt" % (sgrnas_dir, suf)
+    crispri_tmp = pd.read_table(crispri_filename, sep="\t")
+    extra_crispri = extra_crispri.append(crispri_tmp)
+
+cols = main_grnas.columns
+sgrnas = main_grnas.append(extra_crispri)
+sgrnas = sgrnas[cols]
+len(sgrnas)
+
+lib = pd.read_table(lib_f)
+len(lib)
+
+data = pd.read_table(data_f)
+len(data)
+
+data.sgRNA_status.value_counts()
+
+filt = data[data["sgRNA_status"] == "filter met"]
+len(filt)
+
+val = pd.read_excel(val_f)
+val.head()
+
+sgrnas.columns
+
+lib = lib.merge(sgrnas[["sgRNA Sequence", "# Off-Target Tier I Match Bin I Matches", 
+                        "# Off-Target Tier II Match Bin I Matches", "# Off-Target Tier III Match Bin I Matches",
+                        "# Off-Target Tier I Match Bin II Matches", "# Off-Target Tier II Match Bin II Matches",
+                        "# Off-Target Tier III Match Bin II Matches", "# Off-Target Tier I Match Bin III Matches",
+                        "# Off-Target Tier II Match Bin III Matches", "# Off-Target Tier III Match Bin III Matches",
+                        "Off-Target Rank", "Off-Target Rank Weight"]], left_on="sgRNA", 
+                right_on="sgRNA Sequence", how="left")
+lib.sample(5)
+
+# remove scrambles
+lib_ns = lib[lib["tss_id_hg38"] != "scramble"]
+len(lib_ns)
+
+filt = filt.merge(sgrnas[["sgRNA Sequence", "# Off-Target Tier I Match Bin I Matches", 
+                        "# Off-Target Tier II Match Bin I Matches", "# Off-Target Tier III Match Bin I Matches",
+                        "# Off-Target Tier I Match Bin II Matches", "# Off-Target Tier II Match Bin II Matches",
+                        "# Off-Target Tier III Match Bin II Matches", "# Off-Target Tier I Match Bin III Matches",
+                        "# Off-Target Tier II Match Bin III Matches", "# Off-Target Tier III Match Bin III Matches",
+                        "Off-Target Rank", "Off-Target Rank Weight"]], left_on="sgRNA", 
+                right_on="sgRNA Sequence", how="left")
+filt.sample(5)
+
+# remove scrambles
+filt_ns = filt[filt["control_status"] != "scramble"]
+len(filt_ns)
+
+len(filt_ns.sgRNA.unique())
+
+tier_id = ["I", "II", "III"]
+bin_id = ["I", "II"]
+
+fig, axarr = plt.subplots(figsize=(5, 3), nrows=len(bin_id), ncols=len(tier_id), sharex=True, sharey=True)
+
+for i in range(len(bin_id)):
+    for j in range(len(tier_id)):
+        ax = axarr[i, j]
+        b = bin_id[i]
+        t = tier_id[j]
+        print("tier: %s, bin: %s" % (t, b))
+        vals = list(lib_ns["# Off-Target Tier %s Match Bin %s Matches" % (t, b)])
+        
+        # some columns max out at 10 so make all cols max out at 10
+        vals = [int(x) if str(x) != "MAX" else 10 for x in vals]
+        print(np.min(vals))
+        vals = [x if x < 9 else 10 for x in vals]
+        print(np.max(vals))
+        
+        sns.distplot(vals, kde=False, ax=ax, bins=10)
+        ax.set_xticks([0, 2, 4, 6, 8, 10])
+        ax.set_xticklabels(["0", "2", "4", "6", "8", "10+"])
+        ax.set_title("Tier %s, Bin %s" % (t, b))
+        
+        if i == len(bin_id)-1:
+            ax.set_xlabel("# predicted off-targets")
+        if j == 0:
+            ax.set_ylabel("# sgRNAs")
+
+plt.tight_layout()
+
+lib.columns
+
+lib_ns_grp = lib_ns.drop(["tss_id_hg38", "transcript_id", "transcript_name", "gene_id", "gene_name", "tss_type",
+                          "cage_id_hg19", "sgRNA_qual", "cut_offset", "rank", "sgRNA_id", "ctrl_status", "oligo",
+                          "oligo_len", "sgRNA Sequence", "Off-Target Rank", "Off-Target Rank Weight"], axis=1)
+lib_ns_grp = lib_ns_grp.drop_duplicates()
+len(lib_ns_grp)
+
+print("TOTAL NON-SCRAMBLED GUIDES: %s" % len(lib_ns_grp))
+
+n_tier1_bin1 = len(lib_ns_grp[lib_ns_grp["# Off-Target Tier I Match Bin I Matches"].astype(str) == '0'])
+n_tier2_bin1 = len(lib_ns_grp[lib_ns_grp["# Off-Target Tier II Match Bin I Matches"].astype(str) == '0'])
+n_tier3_bin1 = len(lib_ns_grp[lib_ns_grp["# Off-Target Tier III Match Bin I Matches"].astype(str) == '0'])
+
+print("   %% w/ 0 bin 1 tier I off-targets: %s (%s total)" % (round(n_tier1_bin1/len(lib_ns_grp), 3), n_tier1_bin1))
+print("   %% w/ 0 bin 1 tier II off-targets: %s (%s total)" % (round(n_tier2_bin1/len(lib_ns_grp), 3), n_tier2_bin1))
+print("   %% w/ 0 bin 1 tier III off-targets: %s (%s total)" % (round(n_tier3_bin1/len(lib_ns_grp), 3), n_tier3_bin1))
+
+tier_id = ["I", "II", "III"]
+bin_id = ["I", "II"]
+
+fig, axarr = plt.subplots(figsize=(5, 3), nrows=len(bin_id), ncols=len(tier_id), sharex=True, sharey=True)
+
+for i in range(len(bin_id)):
+    for j in range(len(tier_id)):
+        ax = axarr[i, j]
+        b = bin_id[i]
+        t = tier_id[j]
+        print("tier: %s, bin: %s" % (t, b))
+        vals = list(filt_ns["# Off-Target Tier %s Match Bin %s Matches" % (t, b)])
+        
+        # some columns max out at 10 so make all cols max out at 10
+        vals = [int(x) if str(x) != "MAX" else 10 for x in vals]
+        print(np.min(vals))
+        vals = [x if x < 9 else 10 for x in vals]
+        print(np.max(vals))
+        
+        sns.distplot(vals, kde=False, ax=ax, bins=10)
+        ax.set_xticks([0, 2, 4, 6, 8, 10])
+        ax.set_xticklabels(["0", "2", "4", "6", "8", "10+"])
+        ax.set_title("Tier %s, Bin %s" % (t, b))
+        
+        if i == len(bin_id)-1:
+            ax.set_xlabel("# predicted off-targets")
+        if j == 0:
+            ax.set_ylabel("# sgRNAs")
+
+plt.tight_layout()
+
+filt_ns.columns
+
+filt_ns_grp = filt_ns.drop(["control_status", "transcript_id", "gene_name", "DayZero_Rep1", "DayZero_Rep2",
+                            "Undiff_Rep1", "Undiff_Rep2", "Diff_Rep1", "Diff_Rep2", "sgRNA_status", "sgRNA_rank",
+                            "l2fc", "l2fcSE", "sgRNA Sequence", "Off-Target Rank", "Off-Target Rank Weight"], axis=1)
+filt_ns_grp = filt_ns_grp.drop_duplicates()
+len(filt_ns_grp)
+
+print("TOTAL NON-SCRAMBLED GUIDES: %s" % len(filt_ns_grp))
+
+n_tier1_bin1 = len(filt_ns_grp[filt_ns_grp["# Off-Target Tier I Match Bin I Matches"].astype(str) == '0'])
+n_tier2_bin1 = len(filt_ns_grp[filt_ns_grp["# Off-Target Tier II Match Bin I Matches"].astype(str) == '0'])
+n_tier3_bin1 = len(filt_ns_grp[filt_ns_grp["# Off-Target Tier III Match Bin I Matches"].astype(str) == '0'])
+
+print("   %% w/ 0 bin 1 tier I off-targets: %s (%s total)" % (round(n_tier1_bin1/len(filt_ns_grp), 3), n_tier1_bin1))
+print("   %% w/ 0 bin 1 tier II off-targets: %s (%s total)" % (round(n_tier2_bin1/len(filt_ns_grp), 3), n_tier2_bin1))
+print("   %% w/ 0 bin 1 tier III off-targets: %s (%s total)" % (round(n_tier3_bin1/len(filt_ns_grp), 3), n_tier3_bin1))
+
+lib_ns_sub = lib_ns[["sgRNA", "# Off-Target Tier I Match Bin I Matches", 
+                        "# Off-Target Tier II Match Bin I Matches", "# Off-Target Tier III Match Bin I Matches",
+                        "# Off-Target Tier I Match Bin II Matches", "# Off-Target Tier II Match Bin II Matches",
+                        "# Off-Target Tier III Match Bin II Matches", "# Off-Target Tier I Match Bin III Matches",
+                        "# Off-Target Tier II Match Bin III Matches", "# Off-Target Tier III Match Bin III Matches"]]
+val = val.merge(lib_ns_sub, left_on="guide_sequence", right_on="sgRNA", how="left")
+val
+
+

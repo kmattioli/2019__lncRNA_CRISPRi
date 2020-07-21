@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # 00__tss_assignment
@@ -696,4 +696,22 @@ expr_pos[expr_pos["gene_name"]=="CER1"]
 
 
 len(expr_pos)
+
+
+# In[72]:
+
+
+get_ipython().system('rm cage.tmp.bed')
+
+
+# In[73]:
+
+
+get_ipython().system('rm transcripts.tmp.bed')
+
+
+# In[ ]:
+
+
+
 
