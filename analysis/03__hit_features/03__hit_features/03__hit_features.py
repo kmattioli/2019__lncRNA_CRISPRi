@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 03__hit_features
@@ -246,8 +246,15 @@ tmp = data[(data["is_hit"] == "hit") & (data["minimal_biotype"] == "lncRNA")][["
 tmp.sort_values(by="endo_hESC_abslog2fc", ascending=False).head(10)
 
 
-# In[ ]:
+# In[17]:
 
 
-
+tmp = data[(data["is_hit"] == "hit") & (data["minimal_biotype"] == "lncRNA")][["gene_name", "cleaner_gene_biotype",
+                                                                               "max_eff", "max_exp", "enh_tss_dist",
+                                                                               "n_tss", "n_enh",
+                                                                               "prom_cons", "exon_cons", "hESC_mean",
+                                                                               "endo_mean", "endo_hESC_abslog2fc",
+                                                                               "closest_endo_snp_distance",
+                                                                               "DE_enh_tss_dist"]]
+tmp.sort_values(by="closest_endo_snp_distance", ascending=True).head(10)
 

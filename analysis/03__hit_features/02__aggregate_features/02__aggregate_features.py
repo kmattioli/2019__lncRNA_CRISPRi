@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 02__aggregate_features
@@ -677,14 +677,8 @@ tmp.sort_values(by="closest_endo_snp_distance")[["gene_name", "closest_endo_snp_
 supp[supp["gene_name"] == "FOXD3-AS1"].iloc[0]
 
 
-# In[83]:
+# In[84]:
 
 
-supp[supp["gene_name"] == "LINC00623"].iloc[0]
-
-
-# In[ ]:
-
-
-
+supp[supp["gene_name"] == "DIGIT"].iloc[0]
 

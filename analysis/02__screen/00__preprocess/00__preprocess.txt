@@ -1,0 +1,407 @@
+
+import warnings
+warnings.filterwarnings('ignore')
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import re
+import seaborn as sns
+import sys
+
+from ast import literal_eval
+from scipy import stats
+from scipy.stats import spearmanr
+
+# import utils
+sys.path.append("../../../utils")
+from plotting_utils import *
+
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+mpl.rcParams['figure.autolayout'] = False
+
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
+
+def to_cpm(df):
+    cpm = pd.DataFrame()
+    cpm["sgRNA"] = df["sgRNA"]
+    for col in df.columns:
+        if col not in ["sgRNA"]:
+            cpm[col] = df[col]/np.nansum(df[col])*1e6
+    return cpm
+
+def pseudocount(df):
+    pseudo = pd.DataFrame()
+    pseudo["sgRNA"] = df["sgRNA"]
+    for col in df.columns:
+        if col not in ["sgRNA"]:
+            pseudo[col] = df[col] + 1
+    return pseudo
+
+# day zero
+day0_lib1_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep1__Lib1__SetA.sgRNA_counts.txt"
+day0_lib1_rep1_b_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep1__Lib1__SetB.sgRNA_counts.txt"
+day0_lib2_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep1__Lib2__SetA.sgRNA_counts.txt"
+day0_lib2_rep1_b_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep1__Lib2__SetB.sgRNA_counts.txt"
+day0_lib3_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep1__Lib3__SetA.sgRNA_counts.txt"
+day0_lib3_rep1_b_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep1__Lib3__SetB.sgRNA_counts.txt"
+
+day0_lib1_rep2_a_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep2__Lib1__SetA.sgRNA_counts.txt"
+day0_lib1_rep2_b_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep2__Lib1__SetB.sgRNA_counts.txt"
+day0_lib2_rep2_a_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep2__Lib2__SetA.sgRNA_counts.txt"
+day0_lib2_rep2_b_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep2__Lib2__SetB.sgRNA_counts.txt"
+day0_lib3_rep2_a_f = "../../../data/02__screen/00__counts/CRISPRi__DayZero__Rep2__Lib3__SetA.sgRNA_counts.txt"
+
+# BFP+ endo++
+bfppos_endopos_lib1_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__EndoPos__Rep1__Lib1__SetA.sgRNA_counts.txt"
+bfppos_endopos_lib1_rep1_b_f = "../../../data/02__screen/00__counts/CRISPRi__EndoPos__Rep1__Lib1__SetB.sgRNA_counts.txt"
+bfppos_endopos_lib2_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__EndoPos__Rep1__Lib2__SetA.sgRNA_counts.txt"
+bfppos_endopos_lib2_rep1_b_f = "../../../data/02__screen/00__counts/CRISPRi__EndoPos__Rep1__Lib2__SetB.sgRNA_counts.txt"
+
+bfppos_endopos_rep2_a_f = "../../../data/02__screen/00__counts/CRISPRi__EndoPos__Rep2__Lib1__SetA.sgRNA_counts.txt"
+bfppos_endopos_rep2_b_f = "../../../data/02__screen/00__counts/CRISPRi__EndoPos__Rep2__Lib1__SetB.sgRNA_counts.txt"
+
+# BFP+ endo--
+bfppos_endoneg_lib1_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__EndoNeg__Rep1__Lib1__SetA.sgRNA_counts.txt"
+bfppos_endoneg_lib2_rep1_a_f = "../../../data/02__screen/00__counts/CRISPRi__EndoNeg__Rep1__Lib2__SetA.sgRNA_counts.txt"
+
+
+bfppos_endoneg_rep2_a_f = "../../../data/02__screen/00__counts/CRISPRi__EndoNeg__Rep2__Lib1__SetA.sgRNA_counts.txt"
+bfppos_endoneg_rep2_b_f = "../../../data/02__screen/00__counts/CRISPRi__EndoNeg__Rep2__Lib1__SetB.sgRNA_counts.txt"
+
+index_f = "../../../data/01__design/02__final_sgRNAs/crispri.clean_index.txt"
+
+day0_lib1_rep1_a = pd.read_table(day0_lib1_rep1_a_f, sep="\t")
+day0_lib1_rep1_b = pd.read_table(day0_lib1_rep1_b_f, sep="\t")
+day0_lib2_rep1_a = pd.read_table(day0_lib2_rep1_a_f, sep="\t")
+day0_lib2_rep1_b = pd.read_table(day0_lib2_rep1_b_f, sep="\t")
+day0_lib3_rep1_a = pd.read_table(day0_lib3_rep1_a_f, sep="\t")
+day0_lib3_rep1_b = pd.read_table(day0_lib3_rep1_b_f, sep="\t")
+
+day0_rep1 = day0_lib1_rep1_a.merge(day0_lib1_rep1_b, 
+                                   on="sgRNA").merge(day0_lib2_rep1_a, 
+                                                     on="sgRNA").merge(day0_lib2_rep1_b, 
+                                                                       on="sgRNA").merge(day0_lib3_rep1_a,
+                                                                                         on="sgRNA").merge(day0_lib3_rep1_b,
+                                                                                                           on="sgRNA")
+
+day0_rep1.columns = ["sgRNA", "lib1_rep1_a", "lib1_rep1_b", "lib2_rep1_a", "lib2_rep1_b", "lib3_rep1_a", "lib3_rep1_b"]
+day0_rep1.sort_values(by="sgRNA").head()
+
+day0_lib1_rep2_a = pd.read_table(day0_lib1_rep2_a_f, sep="\t")
+day0_lib1_rep2_b = pd.read_table(day0_lib1_rep2_b_f, sep="\t")
+day0_lib2_rep2_a = pd.read_table(day0_lib2_rep2_a_f, sep="\t")
+day0_lib2_rep2_b = pd.read_table(day0_lib2_rep2_b_f, sep="\t")
+day0_lib3_rep2_a = pd.read_table(day0_lib3_rep2_a_f, sep="\t")
+
+day0_rep2 = day0_lib1_rep2_a.merge(day0_lib1_rep2_b, 
+                                   on="sgRNA").merge(day0_lib2_rep2_a, 
+                                                     on="sgRNA").merge(day0_lib2_rep2_b, 
+                                                                       on="sgRNA").merge(day0_lib3_rep2_a, 
+                                                                                         on="sgRNA")
+
+day0_rep2.columns = ["sgRNA", "lib1_rep2_a", "lib1_rep2_b", "lib2_rep2_a", "lib2_rep2_b", "lib3_rep2_a"]
+day0_rep2.sort_values(by="sgRNA").head()
+
+bfppos_endopos_lib1_rep1_a = pd.read_table(bfppos_endopos_lib1_rep1_a_f, sep="\t")
+bfppos_endopos_lib1_rep1_b = pd.read_table(bfppos_endopos_lib1_rep1_b_f, sep="\t")
+bfppos_endopos_lib2_rep1_a = pd.read_table(bfppos_endopos_lib2_rep1_a_f, sep="\t")
+bfppos_endopos_lib2_rep1_b = pd.read_table(bfppos_endopos_lib2_rep1_b_f, sep="\t")
+bfppos_endopos_rep2_a = pd.read_table(bfppos_endopos_rep2_a_f, sep="\t")
+bfppos_endopos_rep2_b = pd.read_table(bfppos_endopos_rep2_b_f, sep="\t")
+
+bfppos_endopos_rep1 = bfppos_endopos_lib1_rep1_a.merge(bfppos_endopos_lib1_rep1_b, 
+                                                       on="sgRNA").merge(bfppos_endopos_lib2_rep1_a,
+                                                                         on="sgRNA").merge(bfppos_endopos_lib2_rep1_b,
+                                                                                           on="sgRNA")
+bfppos_endopos_rep2 = bfppos_endopos_rep2_a.merge(bfppos_endopos_rep2_b, on="sgRNA")
+
+bfppos_endopos_rep1.columns = ["sgRNA", "lib1_rep1_a", "lib1_rep1_b", "lib2_rep1_a", "lib2_rep1_b"]
+bfppos_endopos_rep2.columns = ["sgRNA", "lib1_rep2_a", "lib1_rep2_b"]
+bfppos_endopos_rep1.sort_values(by="sgRNA").head()
+
+bfppos_endoneg_lib1_rep1_a = pd.read_table(bfppos_endoneg_lib1_rep1_a_f, sep="\t")
+bfppos_endoneg_lib2_rep1_a = pd.read_table(bfppos_endoneg_lib2_rep1_a_f, sep="\t")
+bfppos_endoneg_rep2_a = pd.read_table(bfppos_endoneg_rep2_a_f, sep="\t")
+bfppos_endoneg_rep2_b = pd.read_table(bfppos_endoneg_rep2_b_f, sep="\t")
+
+bfppos_endoneg_rep1 = bfppos_endoneg_lib1_rep1_a.merge(bfppos_endoneg_lib2_rep1_a, on="sgRNA")
+bfppos_endoneg_rep2 = bfppos_endoneg_rep2_a.merge(bfppos_endoneg_rep2_b, on="sgRNA")
+
+bfppos_endoneg_rep1.columns = ["sgRNA", "lib1_rep1_a", "lib2_rep1_a"]
+bfppos_endoneg_rep2.columns = ["sgRNA", "lib1_rep2_a", "lib1_rep2_b"]
+bfppos_endoneg_rep1.sort_values(by="sgRNA").head()
+
+index = pd.read_table(index_f, sep="\t")
+
+all_dfs = {"Day__Zero": [day0_rep1, day0_rep2], "BFP+__Endo++": [bfppos_endopos_rep1, bfppos_endopos_rep2], 
+           "BFP+__Endo--": [bfppos_endoneg_rep1, bfppos_endoneg_rep2]}
+
+for name in all_dfs:
+    dfs = all_dfs[name]
+    for i, df in enumerate(dfs):
+        cols = [x for x in df.columns if x != "sgRNA"]
+        
+        # log transform data for plotting
+        tmp = df.copy()
+        tmp[cols] = np.log10(tmp[cols] + 1)
+        
+        # compare A & B seq from same library
+        uniq_libs = list(set([x[:-2] for x in cols]))
+        
+        # edit cols for heatmap below
+        new_cols = ["sgRNA"]
+        cols = ["%s__%s" % (name, x) for x in cols]
+        new_cols.extend(cols)
+        df.columns = new_cols
+        
+        if "Endo--" in name and i == 0:
+            continue
+        
+        for lib in uniq_libs:
+            if "lib3" in lib:
+                continue
+                
+            print("%s, rep %s, lib: %s" % (name, i+1, lib))
+            col1 = "%s_a" % lib
+            col2 = "%s_b" % lib
+
+bfppos_counts = day0_rep1.merge(day0_rep2, on="sgRNA").merge(bfppos_endopos_rep1, on="sgRNA").merge(bfppos_endopos_rep2, on="sgRNA").merge(bfppos_endoneg_rep1, on="sgRNA").merge(bfppos_endoneg_rep2, on="sgRNA")
+
+bfppos_counts.set_index("sgRNA", inplace=True)
+bfppos_counts.sum(axis=0)
+
+day0_rep1["lib1_rep1"] = day0_rep1["Day__Zero__lib1_rep1_a"] + day0_rep1["Day__Zero__lib1_rep1_b"]
+day0_rep1.drop(["Day__Zero__lib1_rep1_a", "Day__Zero__lib1_rep1_b"], axis=1, inplace=True)
+
+day0_rep1["lib2_rep1"] = day0_rep1["Day__Zero__lib2_rep1_a"] + day0_rep1["Day__Zero__lib2_rep1_b"]
+day0_rep1.drop(["Day__Zero__lib2_rep1_a", "Day__Zero__lib2_rep1_b"], axis=1, inplace=True)
+
+day0_rep1["lib3_rep1"] = day0_rep1["Day__Zero__lib3_rep1_a"] + day0_rep1["Day__Zero__lib3_rep1_b"]
+day0_rep1.drop(["Day__Zero__lib3_rep1_a", "Day__Zero__lib3_rep1_b"], axis=1, inplace=True)
+
+day0_rep1["Day_Zero__rep1"] = day0_rep1["lib1_rep1"] + day0_rep1["lib2_rep1"] + day0_rep1["lib3_rep1"]
+
+day0_rep1.drop(["lib1_rep1", "lib2_rep1", "lib3_rep1"], axis=1, inplace=True)
+day0_rep1.head()
+
+day0_rep2["lib1_rep2"] = day0_rep2["Day__Zero__lib1_rep2_a"] + day0_rep2["Day__Zero__lib1_rep2_b"]
+day0_rep2.drop(["Day__Zero__lib1_rep2_a", "Day__Zero__lib1_rep2_b"], axis=1, inplace=True)
+
+day0_rep2["lib2_rep2"] = day0_rep2["Day__Zero__lib2_rep2_a"] + day0_rep2["Day__Zero__lib2_rep2_b"]
+day0_rep2.drop(["Day__Zero__lib2_rep2_a", "Day__Zero__lib2_rep2_b"], axis=1, inplace=True)
+
+day0_rep2["Day_Zero__rep2"] = day0_rep2["lib1_rep2"] + day0_rep2["lib2_rep2"] + day0_rep2["Day__Zero__lib3_rep2_a"]
+day0_rep2.drop(["lib1_rep2", "lib2_rep2", "Day__Zero__lib3_rep2_a"], axis=1, inplace=True)
+day0_rep2.head()
+
+day0 = day0_rep1.merge(day0_rep2, on="sgRNA")
+day0.head()
+
+bfppos_endopos_rep1["BFP+_Endo++__rep1"] = bfppos_endopos_rep1["BFP+__Endo++__lib1_rep1_a"] + bfppos_endopos_rep1["BFP+__Endo++__lib1_rep1_b"] + bfppos_endopos_rep1["BFP+__Endo++__lib2_rep1_a"] + bfppos_endopos_rep1["BFP+__Endo++__lib2_rep1_b"]
+
+bfppos_endopos_rep1.drop(["BFP+__Endo++__lib1_rep1_a", "BFP+__Endo++__lib1_rep1_b", "BFP+__Endo++__lib2_rep1_a", "BFP+__Endo++__lib2_rep1_b"], axis=1, inplace=True)
+
+bfppos_endopos_rep2["BFP+_Endo++__rep2"] = bfppos_endopos_rep2["BFP+__Endo++__lib1_rep2_a"] + bfppos_endopos_rep2["BFP+__Endo++__lib1_rep2_b"]
+bfppos_endopos_rep2.drop(["BFP+__Endo++__lib1_rep2_a", "BFP+__Endo++__lib1_rep2_b"], axis=1, inplace=True)
+
+bfppos_endopos = bfppos_endopos_rep1.merge(bfppos_endopos_rep2, on="sgRNA")
+bfppos_endopos.head()
+
+bfppos_endoneg_rep1["BFP+_Endo--__rep1"] = bfppos_endoneg_rep1["BFP+__Endo--__lib1_rep1_a"] + bfppos_endoneg_rep1["BFP+__Endo--__lib2_rep1_a"]
+bfppos_endoneg_rep1.drop(["BFP+__Endo--__lib1_rep1_a", "BFP+__Endo--__lib2_rep1_a"], axis=1, inplace=True)
+
+bfppos_endoneg_rep2["BFP+_Endo--__rep2"] = bfppos_endoneg_rep2["BFP+__Endo--__lib1_rep2_a"] + bfppos_endoneg_rep2["BFP+__Endo--__lib1_rep2_b"]
+bfppos_endoneg_rep2.drop(["BFP+__Endo--__lib1_rep2_a", "BFP+__Endo--__lib1_rep2_b"], axis=1, inplace=True)
+
+bfppos_endoneg = bfppos_endoneg_rep1.merge(bfppos_endoneg_rep2, on="sgRNA")
+bfppos_endoneg.head()
+
+bfppos_counts = day0.merge(bfppos_endopos, on="sgRNA").merge(bfppos_endoneg, on="sgRNA")
+
+len(bfppos_counts)
+
+cols = ["Day_Zero__rep1", "Day_Zero__rep2", "BFP+_Endo++__rep1", "BFP+_Endo++__rep2", 
+        "BFP+_Endo--__rep1", "BFP+_Endo--__rep2"]
+arr = np.zeros((len(cols), len(cols)))
+for i, repa in enumerate(cols):
+    for j, repb in enumerate(cols):
+        top_a = set(bfppos_counts.sort_values(by=repa, ascending=False).head(100)["sgRNA"])
+        top_b = set(bfppos_counts.sort_values(by=repb, ascending=False).head(100)["sgRNA"])
+        a_b = len(top_a.intersection(top_b))
+        arr[i, j] = int(a_b)
+df = pd.DataFrame(arr)
+df.columns = ["Day Zero\n(rep 1)", "Day Zero\n(rep 2)", "Differentiated\n(rep 1)", "Differentiated\n(rep 2)",
+              "Undifferentiated\n(rep 1)", "Undifferentiated\n(rep 2)"]
+df.index = ["Day Zero\n(rep 1)", "Day Zero\n(rep 2)", "Differentiated\n(rep 1)", "Differentiated\n(rep 2)",
+              "Undifferentiated\n(rep 1)", "Undifferentiated\n(rep 2)"]
+df = df.astype(int)
+df.head()
+
+cg = sns.clustermap(df, figsize=(2.75, 2.75), cmap="Greys", annot=True, **{"cbar": False}, fmt="g", vmax=70)
+cg.cax.set_visible(False)
+_ = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+_ = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=60, ha="right", va="top")
+#cg.savefig("FigS5X.pdf", dpi="figure", bbox_inches="tight")
+
+bfppos_counts[["Day_Zero__rep1", "Day_Zero__rep2", "BFP+_Endo++__rep1", "BFP+_Endo++__rep2",
+               "BFP+_Endo--__rep1", "BFP+_Endo--__rep2"]].sum(axis=0)
+
+# write summed counts to file for DESeq2
+bfppos_counts.columns = ["sgRNA", "DZ_Rep1", "DZ_Rep2", "Pos_Rep1", "Pos_Rep2", "Neg_Rep1", "Neg_Rep2"]
+bfppos_counts.to_csv("../../../data/02__screen/00__counts/Biol_Reps.sgRNA_counts.txt", sep="\t", index=False)
+
+# filter out any sgRNAs w/ < 10 counts in either day zero replicate
+filt_bfppos_counts = bfppos_counts[(bfppos_counts["DZ_Rep1"] >= 10) & ((bfppos_counts["DZ_Rep2"] >= 10))]
+print(len(filt_bfppos_counts))
+filt_bfppos_counts.to_csv("../../../data/02__screen/00__counts/Biol_Reps.sgRNA_counts.DZ_filt.txt", sep="\t", index=False)
+
+# DZ_Rep1_rc = bfppos_counts["DZ_Rep1"].sum()
+# DZ_Rep2_rc = bfppos_counts["DZ_Rep2"].sum()
+# Pos_Rep1_rc = bfppos_counts["Pos_Rep1"].sum()
+# Pos_Rep2_rc = bfppos_counts["Pos_Rep2"].sum()
+# Neg_Rep1_rc= bfppos_counts["Neg_Rep1"].sum()
+# Neg_Rep2_rc = bfppos_counts["Neg_Rep2"].sum()
+
+# print("DZ Rep 1 RC: %s" % DZ_Rep1_rc)
+# print("DZ Rep 2 RC: %s" % DZ_Rep2_rc)
+# print("Pos Rep 1 RC: %s" % Pos_Rep1_rc)
+# print("Pos Rep 2 RC: %s" % Pos_Rep2_rc)
+# print("Neg Rep 1 RC: %s" % Neg_Rep1_rc)
+# print("Neg Rep 2 RC: %s" % Neg_Rep2_rc)
+
+# DZ_Rep1_cellnum = 400e6
+# DZ_Rep2_cellnum = 782e6
+# Pos_Rep1_cellnum = 37.2e6
+# Pos_Rep2_cellnum = 69.4e6
+# Neg_Rep1_cellnum = 975000
+# Neg_Rep2_cellnum = 1.5e6
+
+# max_cell_num = np.max([DZ_Rep1_cellnum, DZ_Rep2_cellnum, Pos_Rep1_cellnum, Pos_Rep2_cellnum, Neg_Rep1_cellnum,
+#                        Neg_Rep2_cellnum])
+
+# DZ_Rep1_nf = max_cell_num / DZ_Rep1_cellnum
+# DZ_Rep2_nf = max_cell_num / DZ_Rep2_cellnum
+# Pos_Rep1_nf = max_cell_num / Pos_Rep1_cellnum
+# Pos_Rep2_nf = max_cell_num / Pos_Rep2_cellnum
+# Neg_Rep1_nf = max_cell_num / Neg_Rep1_cellnum
+# Neg_Rep2_nf = max_cell_num / Neg_Rep2_cellnum
+
+# print("DZ Rep 1 NF: %s" % DZ_Rep1_nf)
+# print("DZ Rep 2 NF: %s" % DZ_Rep2_nf)
+# print("Pos Rep 1 NF: %s" % Pos_Rep1_nf)
+# print("Pos Rep 2 NF: %s" % Pos_Rep2_nf)
+# print("Neg Rep 1 NF: %s" % Neg_Rep1_nf)
+# print("Neg Rep 2 NF: %s" % Neg_Rep2_nf)
+
+# all_norm_counts = bfppos_counts.copy()
+# all_norm_counts["DZ_Rep1"] = (all_norm_counts["DZ_Rep1"]/DZ_Rep1_rc/DZ_Rep1_nf)*1e6
+# all_norm_counts["DZ_Rep2"] = (all_norm_counts["DZ_Rep2"]/DZ_Rep2_rc/DZ_Rep2_nf)*1e6
+# all_norm_counts["Pos_Rep1"] = (all_norm_counts["Pos_Rep1"]/Pos_Rep1_rc/Pos_Rep1_nf)*1e6
+# all_norm_counts["Pos_Rep2"] = (all_norm_counts["Pos_Rep2"]/Pos_Rep2_rc/Pos_Rep2_nf)*1e6
+# all_norm_counts["Neg_Rep1"] = (all_norm_counts["Neg_Rep1"]/Neg_Rep1_rc/Neg_Rep1_nf)*1e6
+# all_norm_counts["Neg_Rep2"] = (all_norm_counts["Neg_Rep2"]/Neg_Rep2_rc/Neg_Rep2_nf)*1e6
+# all_norm_counts.max(axis=0)
+
+all_cpm_counts = pseudocount(bfppos_counts)
+all_cpm_counts = to_cpm(all_cpm_counts)
+all_cpm_counts.head()
+
+len(all_cpm_counts)
+
+tmp = all_cpm_counts.set_index("sgRNA")
+print(len(tmp))
+print(tmp.corr(method="spearman"))
+g = sns.PairGrid(data=np.log10(tmp+1), height=1, corner=True)
+g.map_lower(sns.scatterplot, **{"rasterized": True, "s": 3, "color": "black", "linewidths": 0, "alpha": 0.4})
+g.map_diag(sns.histplot, **{"bins": 20, "color": "black"})
+
+axarr = g.axes
+axarr[1, 0].set_facecolor("lightgray")
+axarr[3, 2].set_facecolor("lightgray")
+axarr[5, 4].set_facecolor("lightgray")
+
+g = sns.jointplot(data=np.log10(tmp+1), x="DZ_Rep1", y="DZ_Rep2",
+                  kind="hist", height=1.5, color="black", bins=20, marginal_kws={"bins": 20})
+g.set_axis_labels("Day Zero (rep 1)\n(log10 cpm)", "Day Zero (rep 2)\n(log10 cpm)")
+
+g = sns.jointplot(data=np.log10(tmp+1), x="Pos_Rep1", y="Pos_Rep2",
+                  kind="hist", height=1.5, color="black", bins=20, marginal_kws={"bins": 20})
+g.set_axis_labels("Differentiated (rep 1)\n(log10 cpm)", "Differentiated (rep 2)\n(log10 cpm)")
+
+g = sns.jointplot(data=np.log10(tmp+1), x="Neg_Rep1", y="Neg_Rep2",
+                  kind="hist", height=1.5, color="black", bins=20, marginal_kws={"bins": 20})
+g.set_axis_labels("Undifferentiated (rep 1)\n(log10 cpm)", "Undifferentiated (rep 2)\n(log10 cpm)")
+
+data = bfppos_counts.merge(all_norm_counts, on="sgRNA", suffixes=("__counts", "__cpm"))
+print(len(data))
+data.head()
+
+index.columns
+
+index_sub = index[["sgRNA", "tss_id_hg38", "transcript_id", "transcript_name", "gene_id", "gene_name",
+                   "tss_type", "cage_id_hg19", "rank", "ctrl_status_fixed", "transcript_biotype_status",
+                   "sgRNA_id"]]
+len(index_sub)
+
+index_sub["refseq"] = index_sub["tss_id_hg38"].str.split(":", expand=True)[0]
+index_sub["tss_start_hg38"] = index_sub["tss_id_hg38"].str.split(":", expand=True)[2]
+index_sub["tss_strand_hg38"] = index_sub["tss_id_hg38"].str.split(":", expand=True)[1]
+
+f = "../../../misc/05__refseq/chr_to_refseq.txt"
+refseq = pd.read_table(f, sep="\t", header=None)
+refseq.columns = ["tss_chr_hg38", "refseq"]
+
+index_sub = index_sub.merge(refseq, on="refseq", how="left")
+len(index_sub)
+
+def fix_starts(row):
+    if row["ctrl_status_fixed"] == "scramble":
+        return np.nan
+    elif "," in row["tss_start_hg38"]:
+        all_ids = literal_eval(row["tss_id_hg38"])
+        s = []
+        for i in all_ids:
+            start = i.split(":")[2]
+            s.append(start)
+        return s
+    else:
+        return row["tss_start_hg38"]
+    
+index_sub["tss_start_hg38"] = index_sub.apply(fix_starts, axis=1)
+index_sub[pd.isnull(index_sub["tss_chr_hg38"])]       
+
+def fix_null_chrs(row):
+    if pd.isnull(row["tss_chr_hg38"]):
+        if row["ctrl_status_fixed"] == "scramble":
+            return "scramble"
+        else:
+            all_ids = literal_eval(row["tss_id_hg38"])
+            idx = all_ids[0]
+            idx_refseq = idx.split(":")[0]
+            chrom = refseq[refseq["refseq"] == idx_refseq]["tss_chr_hg38"].iloc[0]
+            return chrom
+    else:
+        return row["tss_chr_hg38"]
+
+index_sub["tss_chr_hg38"] = index_sub.apply(fix_null_chrs, axis=1)
+index_sub[pd.isnull(index_sub["tss_chr_hg38"])]    
+
+index_sub = index_sub[["sgRNA", "ctrl_status_fixed", "gene_id", "gene_name", "transcript_id", "transcript_name", 
+                       "transcript_biotype_status", "tss_chr_hg38", "tss_start_hg38", "tss_strand_hg38", "tss_type",
+                       "tss_id_hg38", "sgRNA_id"]]
+index_sub.columns = ["sgRNA", "ctrl_status", "gene_id", "gene_name", "transcript_id", "transcript_name", 
+                     "transcript_biotype_status", "tss_chr_hg38", "tss_start_hg38", "tss_strand_hg38", "tss_type",
+                     "tss_id_hg38", "sgRNA_id"]
+print(len(index_sub))
+index_sub.head()
+
+data = index_sub.merge(data, on="sgRNA")
+print(len(data))
+data.head()
+
+data_f = "../../../data/02__screen/01__normalized_counts/Biol_Reps.sgRNA_counts.w_index.txt"
+data.to_csv(data_f, sep="\t", index=False)

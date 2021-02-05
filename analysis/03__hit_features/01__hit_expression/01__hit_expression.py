@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 01__hit_expression
@@ -67,23 +67,29 @@ index_f = "../../../data/01__design/02__final_sgRNAs/crispri_picked_sgRNAs.not_d
 data_f = "../../../data/02__screen/02__enrichment_data/SuppTable_S3.CRISPhieRmix_results.txt"
 
 
+# In[6]:
+
+
+closest_mrnas_f = "../../../misc/00__gene_metadata/gencode.v25lift37.mRNA_TSS_within_1000bp_lncRNA_TSS.txt"
+
+
 # ## 1. import data
 
-# In[6]:
+# In[7]:
 
 
 rna_seq = pd.read_table(rna_seq_f, sep="\t")
 rna_seq.head()
 
 
-# In[7]:
+# In[8]:
 
 
 data = pd.read_table(data_f, sep="\t")
 data.head()
 
 
-# In[8]:
+# In[9]:
 
 
 index = pd.read_table(index_f)
@@ -91,10 +97,18 @@ print(len(index))
 print(len(index.tss_id.unique()))
 
 
+# In[10]:
+
+
+closest_mrnas = pd.read_table(closest_mrnas_f, sep="\t", header=None)
+closest_mrnas.columns = ["lncrna_enst", "lncrna_name", "mrna_enst", "mrna_name"]
+closest_mrnas.head()
+
+
 # ## 2. merge enrichment data (which is grouped by TSS group, which can target multiple transcripts) with transcript-level information in index (in order to merge w/ RNA-seq)
 # since some TSS groups target multiple transcripts, split these up so that we can easily join with the RNA-seq data on transcript_id
 
-# In[9]:
+# In[11]:
 
 
 index_sub = index[["tss_id", "gene_name", "gene_id", "transcript_name", "transcript_id"]].drop_duplicates()
@@ -103,7 +117,7 @@ print(len(index_sub.tss_id.unique()))
 index_sub.head()
 
 
-# In[10]:
+# In[12]:
 
 
 print(len(data))
@@ -116,14 +130,14 @@ data_split.drop("transcript_name", axis=1, inplace=True)
 data_split.head(10)
 
 
-# In[11]:
+# In[13]:
 
 
 data_sub = data_split[data_split["ctrl_status"] != "scramble"]
 len(data_sub)
 
 
-# In[12]:
+# In[14]:
 
 
 data_clean = data_sub.merge(index_sub, left_on="group_id", 
@@ -132,7 +146,7 @@ print(len(data_clean))
 data_clean.head()
 
 
-# In[13]:
+# In[15]:
 
 
 data_clean[pd.isnull(data_clean["transcript_id"])]
@@ -140,109 +154,115 @@ data_clean[pd.isnull(data_clean["transcript_id"])]
 
 # ## 3. merge w/ RNA-seq data using transcript_id
 
-# In[14]:
+# In[16]:
 
 
 data_w_seq = data_clean.merge(rna_seq, on=["gene_name", "gene_id", "transcript_id"], 
                               how="left").sort_values(by="effect_size", ascending=False)
 data_w_seq.drop(["meso_mean", "overall_mean", "qval_hESC_meso", "meso_hESC_log2fc"], axis=1, inplace=True)
-data_w_seq.head(20)
 
 
-# In[15]:
-
-
-data_w_seq[data_w_seq["gene_name"] == "DIGIT"].iloc[0]
-
-
-# In[16]:
+# In[17]:
 
 
 nulls = data_w_seq[(pd.isnull(data_w_seq["transcript_id"])) & (data_w_seq["ctrl_status"] != "scramble")]
 len(nulls)
 
 
-# ## 4. plot expression change vs. enrichment score
-
-# In[17]:
-
-
-experimental = data_w_seq[data_w_seq["ctrl_status"] == "experimental"]
-control = data_w_seq[data_w_seq["ctrl_status"] == "control"]
-
-sox17 = control[control["transcript_name"] == "SOX17-001"]
-foxa2 = control[control["transcript_name"] == "FOXA2-002"]
-gata6 = control[control["transcript_name"] == "GATA6-001"]
-eomes1 = control[control["transcript_name"] == "EOMES-004"]
-eomes2 = control[control["transcript_name"] == "EOMES-001"]
-gsc = control[control["transcript_name"] == "GSC-001"]
-
+# ## 4. how many promoter-overlap hits have an mRNA nearby that is expr?
 
 # In[18]:
 
 
-experimental_nonan = experimental[~pd.isnull(experimental["CRISPhieRmix_FDR"])]
-print(len(experimental))
-print(len(experimental_nonan))
+prom_ov_hits = data_w_seq[(data_w_seq["hit_status"] == "hit") & 
+                          (data_w_seq["cleaner_transcript_biotype"] == "promoter_overlap") &
+                          (data_w_seq["ctrl_status"] == "experimental")][["gene_name", "transcript_name", 
+                                                                          "transcript_id", "hESC_mean", 
+                                                                          "endo_mean", "endo_hESC_log2fc",
+                                                                          "qval_hESC_endo"]]
+print(len(prom_ov_hits))
 
 
 # In[19]:
 
 
-control.sort_values(by="effect_size", ascending=False)[["transcript_name", "gene_name"]].head(10)
+## fix digit
+prom_ov_hits[prom_ov_hits["gene_name"] == "DIGIT"]
 
 
 # In[20]:
 
 
-fig = plt.figure(figsize=(4,1.5))
+prom_ov_hits.at[78, "transcript_id"] = "DIGIT_1"
 
-plt.axhline(y=0, linestyle="dashed", color="black", linewidth=1)
-plt.scatter(experimental_nonan["effect_size"], experimental_nonan["endo_hESC_log2fc"], s=10,
-            color="darkgray", alpha=0.9)
-plt.scatter(control["effect_size"], control["endo_hESC_log2fc"], s=10,
-            color="green", alpha=1)
 
-# plot controls
-plt.scatter(sox17["effect_size"], sox17["endo_hESC_log2fc"], s=10,
-         color="green", alpha=1, linewidths=1, edgecolors="black")
-plt.annotate(s="SOX17", xy=(sox17["effect_size"], sox17["endo_hESC_log2fc"]),
-             xytext=(-15, -10), textcoords="offset points", fontsize=7)
+# In[21]:
 
-plt.scatter(foxa2["effect_size"], foxa2["endo_hESC_log2fc"], s=10,
-         color="green", alpha=1, linewidths=1, edgecolors="black")
-plt.annotate(s="FOXA2", xy=(foxa2["effect_size"], foxa2["endo_hESC_log2fc"]),
-             xytext=(2, -8), textcoords="offset points", fontsize=7)
 
-plt.scatter(gsc["effect_size"], gsc["endo_hESC_log2fc"], s=10,
-         color="green", alpha=1, linewidths=1, edgecolors="black")
-plt.annotate(s="GSC", xy=(gsc["effect_size"], gsc["endo_hESC_log2fc"]),
-             xytext=(2, -10), textcoords="offset points", fontsize=7)
+nearby_hit_mrnas = closest_mrnas[closest_mrnas["lncrna_enst"].isin(prom_ov_hits["transcript_id"])]
+nearby_hit_mrnas[nearby_hit_mrnas["lncrna_enst"].str.contains("DIGIT")]
 
-plt.scatter(gata6["effect_size"], gata6["endo_hESC_log2fc"], s=10,
-         color="green", alpha=1, linewidths=1, edgecolors="black")
-plt.annotate(s="GATA6", xy=(gata6["effect_size"], gata6["endo_hESC_log2fc"]),
-             xytext=(-10, 6), textcoords="offset points", fontsize=7)
 
-plt.scatter(eomes1["effect_size"], eomes1["endo_hESC_log2fc"], s=10,
-         color="green", alpha=1, linewidths=1, edgecolors="black")
-plt.scatter(eomes2["effect_size"], eomes2["endo_hESC_log2fc"], s=10,
-         color="green", alpha=1, linewidths=1, edgecolors="black")
-plt.annotate(s="EOMES", xy=(eomes1["effect_size"], eomes1["endo_hESC_log2fc"]),
-             xytext=(-15, -10), textcoords="offset points", fontsize=7)
+# In[22]:
 
-plt.xlabel("screen transcript enrichment score")
-plt.ylabel("log2(endo tpm/hESC tpm)")
 
-#plt.xscale('symlog')
- 
-# #plt.xlim((-0.05, 1.7))
-#fig.savefig("FigS5D.pdf", dpi="figure", bbox_inches="tight")
+prom_ov_hits = prom_ov_hits.merge(nearby_hit_mrnas, left_on="transcript_id", right_on="lncrna_enst")
+print(len(prom_ov_hits))
+
+
+# In[23]:
+
+
+## now merge mrnas
+prom_ov_hits = prom_ov_hits.merge(rna_seq[["transcript_id", "hESC_mean", "endo_mean", "endo_hESC_log2fc",
+                                           "qval_hESC_endo"]], left_on="mrna_enst", right_on="transcript_id",
+                                  suffixes=("_lncrna", "_mrna"))
+print(len(prom_ov_hits))
+
+
+# In[24]:
+
+
+prom_ov_hits_grp = prom_ov_hits.groupby(["transcript_id_lncrna", 
+                                         "hESC_mean_lncrna", 
+                                         "endo_mean_lncrna",
+                                         "endo_hESC_log2fc_lncrna", 
+                                         "qval_hESC_endo_lncrna"])[["hESC_mean_mrna",
+                                                                    "endo_mean_mrna"]].agg("max").reset_index()
+prom_ov_hits_grp.head()
+
+
+# In[25]:
+
+
+print(len(prom_ov_hits_grp))
+print(len(prom_ov_hits_grp[(prom_ov_hits_grp["hESC_mean_mrna"] >= 1) | (prom_ov_hits_grp["endo_mean_mrna"] >= 1)]))
+
+
+# In[26]:
+
+
+prom_ov_nomrnaexp = list(prom_ov_hits_grp[(prom_ov_hits_grp["hESC_mean_mrna"] < 1) & 
+                                          (prom_ov_hits_grp["endo_mean_mrna"] < 1)]["transcript_id_lncrna"])
+
+
+# In[27]:
+
+
+prom_ov_hits[prom_ov_hits["transcript_id_lncrna"].isin(prom_ov_nomrnaexp)]
+
+
+# In[28]:
+
+
+## save these to highlight in main fig
+prom_ov_highlight = list(prom_ov_hits[prom_ov_hits["transcript_id_lncrna"].isin(prom_ov_nomrnaexp)]["transcript_name"].unique())
+prom_ov_highlight
 
 
 # ## 5. plot expression, tissue-specificity & expression change for hits vs. non hits
 
-# In[21]:
+# In[29]:
 
 
 def is_crisphie_hit(row):
@@ -260,26 +280,26 @@ def is_crisphie_hit(row):
             return "no hit"
 
 
-# In[22]:
+# In[30]:
 
 
 data_w_seq["is_hit"] = data_w_seq.apply(is_crisphie_hit, axis=1)
 data_w_seq.is_hit.value_counts()
 
 
-# In[23]:
+# In[31]:
 
 
 data_w_seq[data_w_seq["is_hit"] == "stringent no hit"].ctrl_status.value_counts()
 
 
-# In[24]:
+# In[32]:
 
 
 data_w_seq[(data_w_seq["is_hit"] == "stringent no hit") & (data_w_seq["ctrl_status"] == "control")]
 
 
-# In[25]:
+# In[33]:
 
 
 hits = data_w_seq[data_w_seq["is_hit"] == "hit"]
@@ -287,19 +307,19 @@ print(len(hits.group_id.unique()))
 hits.head()
 
 
-# In[26]:
+# In[34]:
 
 
 hits[["gene_name", "ctrl_status", "cleaner_transcript_biotype", "effect_size"]].drop_duplicates().sort_values(by="effect_size", ascending=False)
 
 
-# In[27]:
+# In[35]:
 
 
 hits[["gene_name", "ctrl_status", "cleaner_transcript_biotype", "effect_size"]].drop_duplicates().cleaner_transcript_biotype.value_counts()
 
 
-# In[28]:
+# In[36]:
 
 
 data_w_seq["endo_hESC_abslog2fc"] = np.abs(data_w_seq["endo_hESC_log2fc"])
@@ -307,13 +327,13 @@ data_w_seq["endo_hESC_abslog2fc"] = np.abs(data_w_seq["endo_hESC_log2fc"])
 
 # ## 6. plot expression change v. enrichment score for stringent hits only
 
-# In[29]:
+# In[37]:
 
 
 data_w_seq["neg_log_FDR"] = -np.log10(data_w_seq["CRISPhieRmix_FDR"]+1e-12)
 
 
-# In[30]:
+# In[38]:
 
 
 hits = data_w_seq[data_w_seq["is_hit"] == "hit"]
@@ -323,14 +343,14 @@ mrna = hits[hits["ctrl_status"] == "mRNA"]
 control["gene_name"]
 
 
-# In[31]:
+# In[39]:
 
 
 nopromover = experimental[experimental["cleaner_transcript_biotype"] != "promoter_overlap"]
 len(nopromover)
 
 
-# In[32]:
+# In[40]:
 
 
 experimental.sort_values(by="endo_hESC_abslog2fc", ascending=False)[["gene_name", "transcript_name", 
@@ -341,7 +361,7 @@ experimental.sort_values(by="endo_hESC_abslog2fc", ascending=False)[["gene_name"
 
 # ## 7. mark hits in all RNA-seq data
 
-# In[33]:
+# In[41]:
 
 
 no_na = data_w_seq[~pd.isnull(data_w_seq["qval_hESC_endo"])]
@@ -350,14 +370,14 @@ no_na["qval_log10_hESC_endo"] = -np.log10(no_na["qval_hESC_endo"].astype(float))
 len(no_na)
 
 
-# In[34]:
+# In[42]:
 
 
 no_na = no_na[~pd.isnull(no_na["CRISPhieRmix_FDR"])]
 len(no_na)
 
 
-# In[35]:
+# In[43]:
 
 
 fig = plt.figure(figsize=(1.75, 1.5))
@@ -386,7 +406,7 @@ plt.axhline(y=-np.log10(0.05), linestyle="dashed", color="black", linewidth=1)
 #plt.savefig("Fig5J.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[36]:
+# In[44]:
 
 
 fig = plt.figure(figsize=(1.25, 1.75))
@@ -415,7 +435,7 @@ plt.axhline(y=-np.log10(0.05), linestyle="dashed", color="black", linewidth=1)
 fig.savefig("Fig5G.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[37]:
+# In[45]:
 
 
 # fisher's exact (all biotypes)
@@ -431,7 +451,7 @@ node_nohit = len(tmp_node[tmp_node["is_hit"] == "stringent no hit"])
 stats.fisher_exact([[de_hit, de_nohit], [node_hit, node_nohit]])
 
 
-# In[38]:
+# In[46]:
 
 
 # proportion of lncRNA hits w/in classes
@@ -450,21 +470,21 @@ print("%% of hits within differentially expressed lncRNAs: %s" % p_hit_lnc_de)
 print("%% of hits within non-differentially expressed lncRNAs: %s" % p_hit_lnc_node)
 
 
-# ## 6. write file
+# ## 8. write file
 
-# In[39]:
+# In[47]:
 
 
 f = "../../../data/02__screen/02__enrichment_data/enrichment_values.with_rna_seq.UPDATED.txt"
 
 
-# In[40]:
+# In[48]:
 
 
 data_w_seq.columns
 
 
-# In[41]:
+# In[49]:
 
 
 data_w_seq = data_w_seq[["group_id", "ctrl_status", "gene_name", "gene_id", "transcript_name",
@@ -475,36 +495,36 @@ data_w_seq = data_w_seq[["group_id", "ctrl_status", "gene_name", "gene_id", "tra
 data_w_seq.head()
 
 
-# In[42]:
+# In[50]:
 
 
 data_w_seq = data_w_seq.sort_values(by="effect_size", ascending=False)
 data_w_seq.to_csv(f, sep="\t", index=False)
 
 
-# ## 7. investigate expression of the 6 hits in cluster 1
-# FOXD3-AS1, LAMTOR5-AS1, VLDLR-AS1, HOXC-AS1, MEG3, LINC00623
+# ## 9. investigate expression of the 6 hits in cluster 1
+# FOXD3-AS1, LAMTOR5-AS1, VLDLR-AS1, HOXC-AS1, PBCP-AS1, LINC00623
 
-# In[43]:
+# In[51]:
 
 
 data_w_seq.columns
 
 
-# In[44]:
+# In[52]:
 
 
-tmp = data_w_seq[data_w_seq["gene_name"].isin(["FOXD3-AS1", "LAMTOR5-AS1", "VLDLR-AS1", "HOXC-AS1", "MEG3",
-                                                "LINC00623"])]
+tmp = data_w_seq[data_w_seq["gene_name"].isin(["FOXD3-AS1", "LAMTOR5-AS1", "VLDLR-AS1", "HOXC-AS1", "PCBP1-AS1",
+                                               "LINC00623"])]
 tmp = tmp[tmp["is_hit"] == "hit"]
 tmp.sort_values(by=["endo_hESC_abslog2fc", "gene_name"], ascending=False)
 
 
-# In[45]:
+# In[53]:
 
 
-order = ["FOXD3-AS1-004", "VLDLR-AS1-004", "MEG3-018", "LAMTOR5-AS1-022", "LAMTOR5-AS1-006", "LAMTOR5-AS1-023",
-         "LAMTOR5-AS1-014", "LAMTOR5-AS1-031", "LAMTOR5-AS1-020", "LINC00623-013", "HOXC-AS1-002"]
+order = ["FOXD3-AS1-004", "VLDLR-AS1-004", "LAMTOR5-AS1-022", "LAMTOR5-AS1-006", "LAMTOR5-AS1-023",
+         "PCBP1-AS1-005", "LAMTOR5-AS1-014", "LAMTOR5-AS1-031", "LAMTOR5-AS1-020", "LINC00623-013", "HOXC-AS1-002"]
 
 fig = plt.figure(figsize=(2.2, 2))
 ax = sns.barplot(data=tmp, x="transcript_name", y="endo_hESC_log2fc", order=order, color="dimgray")
@@ -515,10 +535,4 @@ ax.axhline(y=0, color="black", linestyle="dashed")
 ax.set_ylim((-2, 1))
 
 fig.savefig("Fig7A.pdf", dpi="figure", bbox_inches="tight")
-
-
-# In[ ]:
-
-
-
 

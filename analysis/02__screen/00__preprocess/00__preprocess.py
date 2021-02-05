@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 00__preprocess
@@ -6,7 +6,7 @@
 # in this notebook, i upload all individual library/primer sgRNA counts and sum together (after checking correlations) to make 1 dataframe with all sgRNA counts across populations (Day Zero, Endo++, Endo--). i also convert counts to cpms for downstream analyses
 # 
 # figures in this notebook:
-# - Fig S5B (heatmap showing biological replicate correlations of sgRNA counts)
+# - Fig S5A (scatterplot histogram of replicate correspondence)
 
 # In[1]:
 
@@ -240,20 +240,6 @@ for name in all_dfs:
             print("%s, rep %s, lib: %s" % (name, i+1, lib))
             col1 = "%s_a" % lib
             col2 = "%s_b" % lib
-            
-#             # plot
-#             g = sns.jointplot(tmp[col1], tmp[col2], color="gray", size=2.2,
-#                               marginal_kws=dict(bins=15),
-#                               joint_kws=dict(s=5, rasterized=True))
-#             g.set_axis_labels("log10(%s (Set A) + 1) counts" % lib, "log10(%s (Set B) + 1) counts" % lib)
-            
-#             # correlation
-#             r, p = spearmanr(tmp[col1], tmp[col2])
-#             g.ax_joint.annotate( "r = {:.2f}".format(r), ha="left", xy=(0.1, .90), xycoords=g.ax_joint.transAxes, 
-#                                 fontsize=fontsize)
-
-#             #g.savefig("%s_%s_lib_corr_scatter.pdf" % (name, lib), dpi="figure", bbox_inches="tight")
-#             plt.show()
 
 
 # In[15]:
@@ -269,35 +255,11 @@ bfppos_counts.set_index("sgRNA", inplace=True)
 bfppos_counts.sum(axis=0)
 
 
-# In[17]:
-
-
-bfppos_counts_corr = bfppos_counts.corr(method="spearman")
-
-
-# In[18]:
-
-
-cmap = sns.cubehelix_palette(as_cmap=True)
-cg = sns.clustermap(bfppos_counts_corr, figsize=(8, 8), cmap=cmap, annot=False, vmin=0.6)
-_ = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
-#plt.suptitle("spearman correlation of all replicates (incl technical)\ncounts of all barcodes")
-#cg.savefig("BFP+_COUNTS__rep_and_lib_corr_heatmap.pdf", dpi="figure", bbox_inches="tight")
-
-
-# just checking to make sure there's no mistake (two tech reps w/ perfect spearman correlations are not identical)
-
-# In[19]:
-
-
-bfppos_counts[["BFP+__Endo--__lib1_rep1_a", "BFP+__Endo--__lib2_rep1_a"]].sample(5)
-
-
 # ## 3. sum technical replicates
 
 # ### day 0
 
-# In[20]:
+# In[17]:
 
 
 day0_rep1["lib1_rep1"] = day0_rep1["Day__Zero__lib1_rep1_a"] + day0_rep1["Day__Zero__lib1_rep1_b"]
@@ -315,7 +277,7 @@ day0_rep1.drop(["lib1_rep1", "lib2_rep1", "lib3_rep1"], axis=1, inplace=True)
 day0_rep1.head()
 
 
-# In[21]:
+# In[18]:
 
 
 day0_rep2["lib1_rep2"] = day0_rep2["Day__Zero__lib1_rep2_a"] + day0_rep2["Day__Zero__lib1_rep2_b"]
@@ -329,7 +291,7 @@ day0_rep2.drop(["lib1_rep2", "lib2_rep2", "Day__Zero__lib3_rep2_a"], axis=1, inp
 day0_rep2.head()
 
 
-# In[22]:
+# In[19]:
 
 
 day0 = day0_rep1.merge(day0_rep2, on="sgRNA")
@@ -338,7 +300,7 @@ day0.head()
 
 # ### BFP+ endo++
 
-# In[23]:
+# In[20]:
 
 
 bfppos_endopos_rep1["BFP+_Endo++__rep1"] = bfppos_endopos_rep1["BFP+__Endo++__lib1_rep1_a"] + bfppos_endopos_rep1["BFP+__Endo++__lib1_rep1_b"] + bfppos_endopos_rep1["BFP+__Endo++__lib2_rep1_a"] + bfppos_endopos_rep1["BFP+__Endo++__lib2_rep1_b"]
@@ -354,7 +316,7 @@ bfppos_endopos.head()
 
 # ### BFP+ endo--
 
-# In[24]:
+# In[21]:
 
 
 bfppos_endoneg_rep1["BFP+_Endo--__rep1"] = bfppos_endoneg_rep1["BFP+__Endo--__lib1_rep1_a"] + bfppos_endoneg_rep1["BFP+__Endo--__lib2_rep1_a"]
@@ -367,42 +329,54 @@ bfppos_endoneg = bfppos_endoneg_rep1.merge(bfppos_endoneg_rep2, on="sgRNA")
 bfppos_endoneg.head()
 
 
-# ## 4. compare biological replicates
+# ## 4. compare overlap of most abundant sgRNAs across reps
 
-# In[25]:
+# In[22]:
 
 
 bfppos_counts = day0.merge(bfppos_endopos, on="sgRNA").merge(bfppos_endoneg, on="sgRNA")
 
 
-# In[26]:
-
-
-tmp = bfppos_counts.set_index("sgRNA")
-tmp.columns = ["Day Zero (rep 1)", "Day Zero (rep 2)", "Differentiated (rep 1)", "Differentiated (rep 2)",
-               "Undifferentiated (rep 1)", "Undifferentiated (rep 2)"]
-bfppos_counts_corr = tmp.corr(method="spearman")
-
-
-# In[27]:
-
-
-cg = sns.clustermap(bfppos_counts_corr, figsize=(3, 3), cmap=cmap, annot=True, vmin=0.6, **{"cbar": False})
-cg.cax.set_visible(False)
-_ = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
-#plt.suptitle("spearman correlation of all replicates\ncounts of all barcodes")
-cg.savefig("FigS5A.pdf", dpi="figure", bbox_inches="tight")
-
-
-# In[28]:
+# In[23]:
 
 
 len(bfppos_counts)
 
 
+# In[24]:
+
+
+cols = ["Day_Zero__rep1", "Day_Zero__rep2", "BFP+_Endo++__rep1", "BFP+_Endo++__rep2", 
+        "BFP+_Endo--__rep1", "BFP+_Endo--__rep2"]
+arr = np.zeros((len(cols), len(cols)))
+for i, repa in enumerate(cols):
+    for j, repb in enumerate(cols):
+        top_a = set(bfppos_counts.sort_values(by=repa, ascending=False).head(100)["sgRNA"])
+        top_b = set(bfppos_counts.sort_values(by=repb, ascending=False).head(100)["sgRNA"])
+        a_b = len(top_a.intersection(top_b))
+        arr[i, j] = int(a_b)
+df = pd.DataFrame(arr)
+df.columns = ["Day Zero\n(rep 1)", "Day Zero\n(rep 2)", "Differentiated\n(rep 1)", "Differentiated\n(rep 2)",
+              "Undifferentiated\n(rep 1)", "Undifferentiated\n(rep 2)"]
+df.index = ["Day Zero\n(rep 1)", "Day Zero\n(rep 2)", "Differentiated\n(rep 1)", "Differentiated\n(rep 2)",
+              "Undifferentiated\n(rep 1)", "Undifferentiated\n(rep 2)"]
+df = df.astype(int)
+df.head()
+
+
+# In[25]:
+
+
+cg = sns.clustermap(df, figsize=(2.75, 2.75), cmap="Greys", annot=True, **{"cbar": False}, fmt="g", vmax=70)
+cg.cax.set_visible(False)
+_ = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+_ = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=60, ha="right", va="top")
+#cg.savefig("FigS5X.pdf", dpi="figure", bbox_inches="tight")
+
+
 # ## 5. report read count sums across conditions
 
-# In[29]:
+# In[26]:
 
 
 bfppos_counts[["Day_Zero__rep1", "Day_Zero__rep2", "BFP+_Endo++__rep1", "BFP+_Endo++__rep2",
@@ -411,7 +385,7 @@ bfppos_counts[["Day_Zero__rep1", "Day_Zero__rep2", "BFP+_Endo++__rep1", "BFP+_En
 
 # ## 6. write counts file for DESeq2 input
 
-# In[30]:
+# In[27]:
 
 
 # write summed counts to file for DESeq2
@@ -419,39 +393,142 @@ bfppos_counts.columns = ["sgRNA", "DZ_Rep1", "DZ_Rep2", "Pos_Rep1", "Pos_Rep2", 
 bfppos_counts.to_csv("../../../data/02__screen/00__counts/Biol_Reps.sgRNA_counts.txt", sep="\t", index=False)
 
 
+# In[28]:
+
+
+# filter out any sgRNAs w/ < 10 counts in either day zero replicate
+filt_bfppos_counts = bfppos_counts[(bfppos_counts["DZ_Rep1"] >= 10) & ((bfppos_counts["DZ_Rep2"] >= 10))]
+print(len(filt_bfppos_counts))
+filt_bfppos_counts.to_csv("../../../data/02__screen/00__counts/Biol_Reps.sgRNA_counts.DZ_filt.txt", sep="\t", index=False)
+
+
 # ## 7. normalize counts to cpm for downstream analyses
+
+# In[29]:
+
+
+# DZ_Rep1_rc = bfppos_counts["DZ_Rep1"].sum()
+# DZ_Rep2_rc = bfppos_counts["DZ_Rep2"].sum()
+# Pos_Rep1_rc = bfppos_counts["Pos_Rep1"].sum()
+# Pos_Rep2_rc = bfppos_counts["Pos_Rep2"].sum()
+# Neg_Rep1_rc= bfppos_counts["Neg_Rep1"].sum()
+# Neg_Rep2_rc = bfppos_counts["Neg_Rep2"].sum()
+
+# print("DZ Rep 1 RC: %s" % DZ_Rep1_rc)
+# print("DZ Rep 2 RC: %s" % DZ_Rep2_rc)
+# print("Pos Rep 1 RC: %s" % Pos_Rep1_rc)
+# print("Pos Rep 2 RC: %s" % Pos_Rep2_rc)
+# print("Neg Rep 1 RC: %s" % Neg_Rep1_rc)
+# print("Neg Rep 2 RC: %s" % Neg_Rep2_rc)
+
+
+# In[30]:
+
+
+# DZ_Rep1_cellnum = 400e6
+# DZ_Rep2_cellnum = 782e6
+# Pos_Rep1_cellnum = 37.2e6
+# Pos_Rep2_cellnum = 69.4e6
+# Neg_Rep1_cellnum = 975000
+# Neg_Rep2_cellnum = 1.5e6
+
+# max_cell_num = np.max([DZ_Rep1_cellnum, DZ_Rep2_cellnum, Pos_Rep1_cellnum, Pos_Rep2_cellnum, Neg_Rep1_cellnum,
+#                        Neg_Rep2_cellnum])
+
+# DZ_Rep1_nf = max_cell_num / DZ_Rep1_cellnum
+# DZ_Rep2_nf = max_cell_num / DZ_Rep2_cellnum
+# Pos_Rep1_nf = max_cell_num / Pos_Rep1_cellnum
+# Pos_Rep2_nf = max_cell_num / Pos_Rep2_cellnum
+# Neg_Rep1_nf = max_cell_num / Neg_Rep1_cellnum
+# Neg_Rep2_nf = max_cell_num / Neg_Rep2_cellnum
+
+# print("DZ Rep 1 NF: %s" % DZ_Rep1_nf)
+# print("DZ Rep 2 NF: %s" % DZ_Rep2_nf)
+# print("Pos Rep 1 NF: %s" % Pos_Rep1_nf)
+# print("Pos Rep 2 NF: %s" % Pos_Rep2_nf)
+# print("Neg Rep 1 NF: %s" % Neg_Rep1_nf)
+# print("Neg Rep 2 NF: %s" % Neg_Rep2_nf)
+
 
 # In[31]:
 
 
-all_norm_counts = pseudocount(bfppos_counts)
-all_norm_counts = to_cpm(all_norm_counts)
-all_norm_counts.head()
+# all_norm_counts = bfppos_counts.copy()
+# all_norm_counts["DZ_Rep1"] = (all_norm_counts["DZ_Rep1"]/DZ_Rep1_rc/DZ_Rep1_nf)*1e6
+# all_norm_counts["DZ_Rep2"] = (all_norm_counts["DZ_Rep2"]/DZ_Rep2_rc/DZ_Rep2_nf)*1e6
+# all_norm_counts["Pos_Rep1"] = (all_norm_counts["Pos_Rep1"]/Pos_Rep1_rc/Pos_Rep1_nf)*1e6
+# all_norm_counts["Pos_Rep2"] = (all_norm_counts["Pos_Rep2"]/Pos_Rep2_rc/Pos_Rep2_nf)*1e6
+# all_norm_counts["Neg_Rep1"] = (all_norm_counts["Neg_Rep1"]/Neg_Rep1_rc/Neg_Rep1_nf)*1e6
+# all_norm_counts["Neg_Rep2"] = (all_norm_counts["Neg_Rep2"]/Neg_Rep2_rc/Neg_Rep2_nf)*1e6
+# all_norm_counts.max(axis=0)
 
 
 # In[32]:
 
 
-len(all_norm_counts)
+all_cpm_counts = pseudocount(bfppos_counts)
+all_cpm_counts = to_cpm(all_cpm_counts)
+all_cpm_counts.head()
 
-
-# ## 8. join w/ index & write full table
 
 # In[33]:
 
 
-data = bfppos_counts.merge(all_norm_counts, on="sgRNA", suffixes=("__counts", "__cpm"))
-print(len(data))
-data.head()
+len(all_cpm_counts)
 
 
 # In[34]:
 
 
-index.columns
+tmp = all_cpm_counts.set_index("sgRNA")
+print(len(tmp))
+print(tmp.corr(method="spearman"))
 
 
 # In[35]:
+
+
+g = sns.jointplot(data=np.log10(tmp+1), x="DZ_Rep1", y="DZ_Rep2",
+                  kind="hist", height=1.5, color="black", bins=20, marginal_kws={"bins": 20})
+g.set_axis_labels("Day Zero (rep 1)\n(log10 cpm)", "Day Zero (rep 2)\n(log10 cpm)")
+g.savefig("FigS5A_1.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[36]:
+
+
+g = sns.jointplot(data=np.log10(tmp+1), x="Pos_Rep1", y="Pos_Rep2",
+                  kind="hist", height=1.5, color="black", bins=20, marginal_kws={"bins": 20})
+g.set_axis_labels("Differentiated (rep 1)\n(log10 cpm)", "Differentiated (rep 2)\n(log10 cpm)")
+g.savefig("FigS5A_2.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[37]:
+
+
+g = sns.jointplot(data=np.log10(tmp+1), x="Neg_Rep1", y="Neg_Rep2",
+                  kind="hist", height=1.5, color="black", bins=20, marginal_kws={"bins": 20})
+g.set_axis_labels("Undifferentiated (rep 1)\n(log10 cpm)", "Undifferentiated (rep 2)\n(log10 cpm)")
+g.savefig("FigS5A_3.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 8. join w/ index & write full table
+
+# In[39]:
+
+
+data = bfppos_counts.merge(all_cpm_counts, on="sgRNA", suffixes=("__counts", "__cpm"))
+print(len(data))
+data.head()
+
+
+# In[40]:
+
+
+index.columns
+
+
+# In[41]:
 
 
 index_sub = index[["sgRNA", "tss_id_hg38", "transcript_id", "transcript_name", "gene_id", "gene_name",
@@ -460,7 +537,7 @@ index_sub = index[["sgRNA", "tss_id_hg38", "transcript_id", "transcript_name", "
 len(index_sub)
 
 
-# In[36]:
+# In[42]:
 
 
 index_sub["refseq"] = index_sub["tss_id_hg38"].str.split(":", expand=True)[0]
@@ -468,7 +545,7 @@ index_sub["tss_start_hg38"] = index_sub["tss_id_hg38"].str.split(":", expand=Tru
 index_sub["tss_strand_hg38"] = index_sub["tss_id_hg38"].str.split(":", expand=True)[1]
 
 
-# In[37]:
+# In[43]:
 
 
 f = "../../../misc/05__refseq/chr_to_refseq.txt"
@@ -476,14 +553,14 @@ refseq = pd.read_table(f, sep="\t", header=None)
 refseq.columns = ["tss_chr_hg38", "refseq"]
 
 
-# In[38]:
+# In[44]:
 
 
 index_sub = index_sub.merge(refseq, on="refseq", how="left")
 len(index_sub)
 
 
-# In[39]:
+# In[45]:
 
 
 def fix_starts(row):
@@ -503,7 +580,7 @@ index_sub["tss_start_hg38"] = index_sub.apply(fix_starts, axis=1)
 index_sub[pd.isnull(index_sub["tss_chr_hg38"])]       
 
 
-# In[40]:
+# In[46]:
 
 
 def fix_null_chrs(row):
@@ -523,7 +600,7 @@ index_sub["tss_chr_hg38"] = index_sub.apply(fix_null_chrs, axis=1)
 index_sub[pd.isnull(index_sub["tss_chr_hg38"])]    
 
 
-# In[41]:
+# In[47]:
 
 
 index_sub = index_sub[["sgRNA", "ctrl_status_fixed", "gene_id", "gene_name", "transcript_id", "transcript_name", 
@@ -536,7 +613,7 @@ print(len(index_sub))
 index_sub.head()
 
 
-# In[42]:
+# In[48]:
 
 
 data = index_sub.merge(data, on="sgRNA")
@@ -544,15 +621,9 @@ print(len(data))
 data.head()
 
 
-# In[43]:
+# In[49]:
 
 
 data_f = "../../../data/02__screen/01__normalized_counts/Biol_Reps.sgRNA_counts.w_index.txt"
 data.to_csv(data_f, sep="\t", index=False)
-
-
-# In[ ]:
-
-
-
 

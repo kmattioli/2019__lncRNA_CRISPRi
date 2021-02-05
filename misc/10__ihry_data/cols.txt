@@ -1,0 +1,5 @@
+col	condition	batch
+OCT4_low_Rep1	low	rep1
+OCT4_low_Rep2	low	rep2
+OCT4_high_Rep1	high	rep1
+OCT4_high_Rep2	high	rep2

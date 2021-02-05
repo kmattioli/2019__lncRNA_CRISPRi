@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 01__tSNE
@@ -238,6 +238,13 @@ len(unique)
 # In[25]:
 
 
+## easier if the mRNA-like cluster is called "cluster 1", so rename
+labels = [1 if x == 2 else 2 for x in labels]
+
+
+# In[26]:
+
+
 df = pd.DataFrame(data = x_embedded, columns = ["f1", "f2"])
 df = pd.concat([df, data_filt_nonan[meta_cols].reset_index()], axis = 1)
 df = pd.concat([df, data_filt_nonan[sub_feature_cols].reset_index()], axis = 1)
@@ -247,14 +254,14 @@ df.head()
 
 # ## 5. visualize data using t-SNE
 
-# In[26]:
+# In[27]:
 
 
 c1 = sns.color_palette("magma", n_colors=2, desat=0.5)[0]
 c2 = sns.color_palette("plasma", n_colors=12, desat=0.5)[10]
 
 
-# In[27]:
+# In[28]:
 
 
 lut = dict(zip(list(range(1, len(unique)+1)), [c2, c1]))
@@ -263,7 +270,7 @@ df["color"] = row_colors
 df.head()
 
 
-# In[28]:
+# In[29]:
 
 
 # sample mRNAs and lncRNAs for plotting purposes
@@ -276,13 +283,13 @@ all_plot = mrnas.append(lncrnas).append(spec)
 len(all_plot)
 
 
-# In[29]:
+# In[30]:
 
 
 spec
 
 
-# In[30]:
+# In[31]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -299,7 +306,7 @@ ax.set_ylabel("t-SNE dimension 2")
 fig.savefig("Fig6B.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[31]:
+# In[32]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -317,7 +324,7 @@ plt.show()
 fig.savefig("Fig6C.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[32]:
+# In[33]:
 
 
 titles = ["       max splicing efficiency       ", "       log10 max expression       ", 
@@ -372,7 +379,7 @@ plt.subplots_adjust(hspace=0.5, wspace=0.3)
 plt.savefig("FigS7.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[33]:
+# In[34]:
 
 
 fig, ax = plt.subplots(figsize=(1.75, 1.5), nrows=1, ncols=1)
@@ -389,19 +396,19 @@ plt.show()
 
 # ## 6. limit to genes in screen
 
-# In[34]:
+# In[35]:
 
 
 hits.head()
 
 
-# In[35]:
+# In[36]:
 
 
 hits.is_hit.value_counts()
 
 
-# In[36]:
+# In[37]:
 
 
 print(len(df))
@@ -410,7 +417,7 @@ print(len(df_screen))
 df_screen.head()
 
 
-# In[37]:
+# In[38]:
 
 
 mrnas_screen = df_screen[df_screen["minimal_biotype"] == "mRNA"]
@@ -420,7 +427,7 @@ mrnas_hits = mrnas_screen[mrnas_screen["is_hit"] == "hit"]
 lncrnas_hits = lncrnas_screen[lncrnas_screen["is_hit"] == "hit"]
 
 
-# In[38]:
+# In[39]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -435,7 +442,7 @@ ax.set_ylabel("t-SNE dimension 2")
 plt.show()
 
 
-# In[39]:
+# In[40]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.5), nrows=1, ncols=1)
@@ -459,7 +466,7 @@ plt.show()
 fig.savefig("Fig6D.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[40]:
+# In[41]:
 
 
 dedup = lncrnas_hits[["f1", "f2", "minimal_biotype", "cleaner_gene_biotype", "gene_name", "cluster"]].drop_duplicates()
@@ -467,7 +474,7 @@ print(len(dedup))
 dedup.sort_values(by="f1", ascending=False).head(10)
 
 
-# In[41]:
+# In[42]:
 
 
 tmp = dedup[dedup["cluster"] == 1]
@@ -476,19 +483,19 @@ tmp.sort_values(by="f1")
 
 # ## 9. write files
 
-# In[42]:
+# In[43]:
 
 
 len(df)
 
 
-# In[43]:
+# In[44]:
 
 
 df.minimal_biotype.value_counts()
 
 
-# In[44]:
+# In[45]:
 
 
 sub_cols = ["gene_id", "gene_name", "minimal_biotype", "max_eff", "max_exp", "gc", "n_tss", "n_enh", "enh_tss_dist",
@@ -499,26 +506,26 @@ supp.columns = ["gene_id", "gene_name", "biotype", "max_splicing_eff", "max_expr
                 "n_exons", "tsne_f1", "tsne_f2", "assigned_cluster"]
 
 
-# In[45]:
+# In[46]:
 
 
 supp = supp.sort_values(by="gene_id")
 supp.head()
 
 
-# In[46]:
+# In[47]:
 
 
 supp.to_csv("../../../data/04__clusters/SuppTable_S7.cluster_predictions.txt", sep="\t", index=False)
 
 
-# In[47]:
+# In[48]:
 
 
 df_screen.head()
 
 
-# In[48]:
+# In[49]:
 
 
 sub_cols = ["gene_id", "gene_name", "minimal_biotype", "cleaner_gene_biotype", "f1", "f2", "is_hit", "cluster"]
@@ -527,15 +534,9 @@ supp.columns = ["gene_id", "gene_name", "biotype", "lncrna_class", "tsne_f1", "t
                 "assigned_cluster"]
 
 
-# In[49]:
+# In[50]:
 
 
 supp[supp["gene_name"].isin(["RP11-1144P22.1", "CTD-2058B24.2", "DANCR", "DIGIT", "RP11-222K16.2",
                              "FOXD3-AS1", "RP11-479O16.1", "RP11-120D5.1"])]
-
-
-# In[ ]:
-
-
-
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 05__validation
@@ -84,7 +84,6 @@ qpcr_dir = "../../../data/02__screen/03__validation_data/rt_qpcr_data"
 
 
 data = pd.read_table(data_f, sep="\t")
-#data["sgRNA_rank"] = data["sgRNA_rank"].astype(str)
 data.head()
 
 
@@ -107,6 +106,12 @@ crisphie.head()
 # In[10]:
 
 
+crisphie.hit_status.value_counts()
+
+
+# In[11]:
+
+
 files = []
 for (dirpath, dirnames, filenames) in walk(qpcr_dir):
     files.extend(filenames)
@@ -117,53 +122,50 @@ files
 
 # ## 2. merge validation data w/ screen data
 
-# In[11]:
-
-
-data_sub = data[["sgRNA", "sgRNA_l2fc", "tss_id"]]
-
-
 # In[12]:
 
 
-val_data = val_data.merge(data_sub, left_on="guide_sequence", right_on="sgRNA", how="left")
+data_sub = data[["sgRNA", "sgRNA_l2fc_diff", "tss_id"]]
 
 
 # In[13]:
 
 
+val_data = val_data.merge(data_sub, left_on="guide_sequence", right_on="sgRNA", how="left")
+
+
+# In[14]:
+
+
 val_data = val_data.merge(crisphie[["group_id", "transcript_biotype_status", "hit_status"]], 
                           left_on="tss_id", right_on="group_id", how="left")
 val_data.drop(["sgRNA", "group_id"], axis=1, inplace=True)
-val_data
 
 
 # ## 3. calculate validation data "enrichment" (guide enrichment normalized by scrambled enrichment)
 
-# In[14]:
+# In[15]:
 
 
 val_data["guide_undiff_enrich"] = val_data["guide_undiff"]/val_data["guide_diff"]
 val_data["scram_undiff_enrich"] = val_data["scram_undiff"]/val_data["scram_diff"]
 val_data["val_score"] = np.log2(val_data["guide_undiff_enrich"]/val_data["scram_undiff_enrich"])
-val_data.sort_values(by="sgRNA_l2fc", ascending=False)
 
-
-# In[15]:
-
-
-# remove the 2 sgRNAs that weren't in the screen
-val_data = val_data[~pd.isnull(val_data["hit_status"])]
-val_data
-
-
-# ## 4. plot correlation -- all validated sgRNAs
 
 # In[16]:
 
 
+# remove the 2 sgRNAs that weren't in the screen
+val_data = val_data[~pd.isnull(val_data["hit_status"])]
+
+
+# ## 4. plot correlation -- all validated sgRNAs
+
+# In[17]:
+
+
 fig = plt.figure(figsize=(2, 2))
-ax = sns.regplot(data=val_data, x="sgRNA_l2fc", y="val_score", color="black")
+ax = sns.regplot(data=val_data, x="sgRNA_l2fc_diff", y="val_score", color="black")
 
 hits = val_data[val_data["hit_status"] == "hit"]
 nonhits = val_data[val_data["hit_status"] == "no hit"]
@@ -174,20 +176,20 @@ pc_nonhits = nonhits[nonhits["transcript_biotype_status"] == "protein_coding"]
 lnc_hits = hits[hits["transcript_biotype_status"] != "protein_coding"]
 lnc_nonhits = nonhits[nonhits["transcript_biotype_status"] != "protein_coding"]
 
-ax.scatter(pc_hits["sgRNA_l2fc"], pc_hits["val_score"], color=sns.color_palette()[2], zorder=11,
+ax.scatter(pc_hits["sgRNA_l2fc_diff"], pc_hits["val_score"], color=sns.color_palette()[2], zorder=11,
            edgecolors="black", linewidth=0.5)
-ax.scatter(pc_nonhits["sgRNA_l2fc"], pc_nonhits["val_score"], color="white", 
+ax.scatter(pc_nonhits["sgRNA_l2fc_diff"], pc_nonhits["val_score"], color="white", 
            edgecolors=sns.color_palette()[2], linewidth=0.5, zorder=11)
 
-ax.scatter(lnc_hits["sgRNA_l2fc"], lnc_hits["val_score"], color="black", zorder=11)
-ax.scatter(lnc_nonhits["sgRNA_l2fc"], lnc_nonhits["val_score"], color="white", 
+ax.scatter(lnc_hits["sgRNA_l2fc_diff"], lnc_hits["val_score"], color="black", zorder=11)
+ax.scatter(lnc_nonhits["sgRNA_l2fc_diff"], lnc_nonhits["val_score"], color="white", 
            edgecolors="black", linewidth=0.5, zorder=11)
 
 ax.set_xlabel("screen sgRNA enrichment score")
 ax.set_ylabel("validation sgRNA enrichment score")
 
-no_nan = val_data[~pd.isnull(val_data["sgRNA_l2fc"])]
-r, p = stats.spearmanr(no_nan["sgRNA_l2fc"], no_nan["val_score"])
+no_nan = val_data[~pd.isnull(val_data["sgRNA_l2fc_diff"])]
+r, p = stats.spearmanr(no_nan["sgRNA_l2fc_diff"], no_nan["val_score"])
 ax.text(0.05, 0.95, "r = %s\np = %s\nn= %s" % ((round(r, 2), round(p, 4), len(no_nan))), 
         ha="left", va="top", fontsize=fontsize,
         transform=ax.transAxes)
@@ -195,15 +197,15 @@ ax.text(0.05, 0.95, "r = %s\np = %s\nn= %s" % ((round(r, 2), round(p, 4), len(no
 fig.savefig("Fig4A.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[17]:
+# In[18]:
 
 
-val_data[val_data["gene_name"] == "RP11-222K16.2"][["guide_num", "guide_sequence", "sgRNA_l2fc", "val_score"]]
+val_data[val_data["gene_name"] == "RP11-222K16.2"][["guide_num", "guide_sequence", "sgRNA_l2fc_diff", "val_score"]]
 
 
 # ## 5. load RT-qPCR data
 
-# In[18]:
+# In[19]:
 
 
 def row_type(row):
@@ -213,7 +215,7 @@ def row_type(row):
         return "sgRNA"
 
 
-# In[19]:
+# In[20]:
 
 
 qpcr_dict = {}
@@ -228,7 +230,7 @@ for f in files:
     qpcr_dict["%s__%s" % (n.upper(), sgrna)] = melt
 
 
-# In[20]:
+# In[21]:
 
 
 qpcr_dict["SOX17__1"]
@@ -237,7 +239,7 @@ qpcr_dict["SOX17__1"]
 # ## 6. make RT-qPCR plots
 # for SOX17, EOMES, RP11-120D5.1, RP11-222K16.2 (figure 4)
 
-# In[21]:
+# In[22]:
 
 
 genes = ["SOX17", "EOMES", "RP11-120D5.1", "RP11-222K16.2"]
@@ -251,7 +253,7 @@ for key in qpcr_dict:
         plot_df = plot_df.append(df)
 
 
-# In[22]:
+# In[23]:
 
 
 vals = plot_df[plot_df["variable"].str.contains("val")]
@@ -260,14 +262,14 @@ print(len(vals))
 print(len(yerrs))
 
 
-# In[23]:
+# In[24]:
 
 
 order = ["SOX17__1", "SOX17__4", "EOMES__1", "EOMES__10"]
 pal = {"scrm_val": "darkgray", "sgrna_val": sns.color_palette()[2]}
 
 
-# In[24]:
+# In[25]:
 
 
 fig = plt.figure(figsize=(2.5, 2))
@@ -301,14 +303,14 @@ for i, x in enumerate(xs):
 fig.savefig("Fig4B.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[25]:
+# In[26]:
 
 
 order = ["RP11-120D5.1__1", "RP11-120D5.1__2", "RP11-222K16.2__3", "RP11-222K16.2__9"]
 pal = {"scrm_val": "darkgray", "sgrna_val": "dimgray"}
 
 
-# In[26]:
+# In[27]:
 
 
 fig = plt.figure(figsize=(2.5, 2))
@@ -344,7 +346,7 @@ fig.savefig("Fig4C.pdf", dpi="figure", bbox_inches="tight")
 
 # ## 7. join all data, incl rt-qpcr
 
-# In[27]:
+# In[28]:
 
 
 tmp1 = plot_df[plot_df["variable"].isin(["scrm_val", "scrm_yerr1", 
@@ -353,7 +355,7 @@ tmp1 = tmp1.pivot(index="info", columns="variable").reset_index()
 tmp1
 
 
-# In[28]:
+# In[29]:
 
 
 genes = [x for x in val_data.gene_name.unique() if x not in ["SOX17", "EOMES", "RP11-120D5.1", "RP11-222K16.2"]]
@@ -368,7 +370,7 @@ for key in qpcr_dict:
 rem_plot_df.head()
 
 
-# In[29]:
+# In[30]:
 
 
 tmp2 = rem_plot_df[rem_plot_df["variable"].isin(["scrm_val", "scrm_yerr1", 
@@ -377,7 +379,7 @@ tmp2 = tmp2.pivot(index="info", columns="variable").reset_index()
 tmp2
 
 
-# In[30]:
+# In[31]:
 
 
 qpcr_df = tmp1.append(tmp2)
@@ -385,7 +387,7 @@ qpcr_df["gene_name"] = qpcr_df["info"].str.split("__", expand=True)[0]
 qpcr_df["guide_num"] = qpcr_df["info"].str.split("__", expand=True)[1].astype(int)
 
 
-# In[31]:
+# In[32]:
 
 
 val_data = val_data.merge(qpcr_df, how="left", on=["gene_name", "guide_num"])
@@ -394,13 +396,13 @@ val_data.head()
 
 # ## 5. write updated file
 
-# In[32]:
+# In[33]:
 
 
 val_data.columns
 
 
-# In[33]:
+# In[34]:
 
 
 val_data = val_data.iloc[:, [0, 1, 2, 8, 9, 3, 4, 5, 6, 10, 16, 13, 20, 21, 18, 19]]
@@ -411,7 +413,7 @@ val_data.columns = ["gene_name", "sgRNA_num", "sgRNA", "FACS_date", "RTqPCR_date
 val_data.head()
 
 
-# In[34]:
+# In[35]:
 
 
 # update sgRNA numbers so they reflect what's in the corr plot
@@ -422,14 +424,14 @@ gene_order_df.columns = ["rank", "gene_name"]
 gene_order_df
 
 
-# In[35]:
+# In[36]:
 
 
 val_data = val_data.merge(gene_order_df, on="gene_name")
 val_data = val_data.sort_values(by=["rank", "sgRNA_num"], ascending=True)
 
 
-# In[36]:
+# In[37]:
 
 
 val_data.reset_index(inplace=True)
@@ -439,15 +441,9 @@ val_data.drop(["level_0", "index", "rank"], axis=1, inplace=True)
 val_data
 
 
-# In[37]:
+# In[38]:
 
 
 val_data.to_csv("../../../data/02__screen/03__validation_data/SuppTable_S4.validation_results.txt", sep="\t",
                index=False)
-
-
-# In[ ]:
-
-
-
 

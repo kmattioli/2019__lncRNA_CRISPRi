@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # 02__cleaner_index
@@ -6,7 +6,7 @@
 # in this notebook, i clean up my original index file to add some additional columns and update some information (e.g. biotype classifications).
 # 
 # figures in this notebook:
-# - Fig S4F_1: count of biotypes in original library design
+# - Fig S5D_1: count of biotypes in original library design
 
 # In[1]:
 
@@ -265,7 +265,7 @@ for p in ax.patches:
 plt.xlim((0,9000))
 plt.ylabel("")
 plt.title("biotypes in\nsgRNA library")
-fig.savefig("FigS4F_1.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig("FigS5D_1.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 9. write cleaner index file
@@ -287,10 +287,4 @@ index.head()
 
 index_f = "../../../data/01__design/02__final_sgRNAs/crispri.clean_index.txt"
 index.to_csv(index_f, sep="\t", index=False)
-
-
-# In[ ]:
-
-
-
 
